@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scratch++ // 100% WebAssembly 1.0 Studio (Swarm)</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <script src="vendor/blockly.min.js"></script>
+</head>
+<body>
+
+    <!-- Header Toolbar -->
+    <header>
+        <h1>
+            <span>⚡ Scratch++</span>
+            <span class="badge-wasm">WASM 1.0 (100% MVP)</span>
+        </h1>
+
+        <div class="actions">
+            <!-- Run / Stop Button -->
+            <button id="btn-run" class="btn-play-toggle" title="Executar Programa (Espaço)">
+                <svg class="icon-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <svg class="icon-stop" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12"></rect>
+                </svg>
+            </button>
+
+            <!-- Example Selector -->
+            <div class="project-toolbar">
+                <label for="example-select" style="font-size: 11px; color: var(--text-dim); font-weight: 700;">Exemplo:</label>
+                <select id="example-select"></select>
+            </div>
+
+            <button id="btn-compile" class="btn-accent" title="Compilar para Wasm">
+                <span>🔨 Compilar</span>
+            </button>
+
+            <button id="btn-export-wasm" title="Baixar arquivo .wasm compilado">
+                <span>📦 Exportar .wasm</span>
+            </button>
+
+            <button id="btn-export-spp" title="Salvar projeto .spp (JSON)">
+                <span>💾 Salvar .spp</span>
+            </button>
+
+            <button id="btn-import-spp" title="Carregar projeto .spp">
+                <span>📂 Abrir</span>
+            </button>
+            <input type="file" id="file-input-spp" accept=".spp,.json" style="display: none;">
+
+            <button id="btn-clear" title="Limpar Workspace">
+                <span>🗑️ Limpar</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Studio Split Workspace -->
+    <main class="workspace-grid">
+        <!-- Left: Blockly Canvas -->
+        <div class="editor-pane">
+            <div id="blockly-div"></div>
+        </div>
+
+        <!-- Right: Inspector / Console / Wasm Display -->
+        <aside class="inspector-pane">
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="tab-console">📟 Console</button>
+                <button class="tab-btn" data-tab="tab-wasm">📦 Binário Wasm</button>
+                <button class="tab-btn" data-tab="tab-ir">🔍 AST / IR</button>
+            </nav>
+
+            <!-- Tab 1: Console -->
+            <div id="tab-console" class="tab-content active">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="color: var(--text-dim); font-weight: bold;">Saída do Runtime Wasm:</span>
+                    <button id="btn-clear-console" style="padding: 2px 6px; font-size: 10px;">Limpar Logs</button>
+                </div>
+                <div id="console-output"></div>
+            </div>
+
+            <!-- Tab 2: Wasm Disassembly / Hex View -->
+            <div id="tab-wasm" class="tab-content">
+                <div id="wasm-summary" style="margin-bottom: 8px; color: #55efc4; font-weight: bold;"></div>
+                <div id="wasm-hex" class="code-viewer">Nenhum módulo compilado ainda. Clique em "Compilar".</div>
+            </div>
+
+            <!-- Tab 3: AST / IR Debug -->
+            <div id="tab-ir" class="tab-content">
+                <div id="ir-viewer" class="code-viewer">Nenhuma IR gerada.</div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Footer Status -->
+    <footer class="chalk-footer">
+        <div id="status-left">⚡ Scratch++ Studio Pronto.</div>
+        <div id="status-right">100% WebAssembly 1.0 (MVP) • Cobertura Completa de Opcodes</div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast">Notificação</div>
+
+    <!-- Blockly Toolbox XML Definition: 100% WebAssembly 1.0 Instructions -->
+    <xml id="toolbox" style="display: none">
+        <category name="Controle Estruturado" colour="#d97706">
+            <block type="spp_start"></block>
+            <block type="spp_block"></block>
+            <block type="spp_loop"></block>
+            <block type="spp_if"></block>
+            <block type="spp_repeat">
+                <value name="TIMES">
+                    <block type="spp_const_i32"><field name="VALUE">10</field></block>
+                </value>
+            </block>
+            <block type="spp_while"></block>
+            <block type="spp_br"></block>
+            <block type="spp_br_if"></block>
+            <block type="spp_br_table"></block>
+            <block type="spp_select"></block>
+            <block type="spp_return"></block>
+            <block type="spp_drop"></block>
+            <block type="spp_nop"></block>
+            <block type="spp_unreachable"></block>
+        </category>
+
+        <category name="Variáveis & Globais" colour="#3b82f6">
+            <block type="spp_declare"></block>
+            <block type="spp_global_declare"></block>
+            <block type="spp_set"></block>
+            <block type="spp_tee"></block>
+            <block type="spp_get"></block>
+            <block type="spp_const_i32"></block>
+            <block type="spp_const_i64"></block>
+            <block type="spp_const_f32"></block>
+            <block type="spp_const_f64"></block>
+            <block type="spp_const_bool"></block>
+            <block type="spp_const_text"></block>
+        </category>
+
+        <category name="Operações & Matemática" colour="#059669">
+            <block type="spp_binary_op"></block>
+            <block type="spp_unary_op"></block>
+        </category>
+
+        <category name="Conversões & Bitcast" colour="#10b981">
+            <block type="spp_convert"></block>
+            <block type="spp_reinterpret"></block>
+        </category>
+
+        <category name="Memória Linear (Wasm)" colour="#475569">
+            <block type="spp_mem_load"></block>
+            <block type="spp_mem_store"></block>
+            <block type="spp_mem_grow"></block>
+            <block type="spp_mem_size"></block>
+            <block type="spp_alloc_buffer"></block>
+        </category>
+
+        <category name="Funções & Tabela" colour="#9333ea">
+            <block type="spp_function_def"></block>
+            <block type="spp_call_stmt"></block>
+            <block type="spp_call_expr"></block>
+            <block type="spp_function_ptr"></block>
+            <block type="spp_call_indirect"></block>
+        </category>
+
+        <category name="I/O & Texto" colour="#8b5cf6">
+            <block type="spp_print"></block>
+            <block type="spp_string_concat"></block>
+        </category>
+    </xml>
+
+    <!-- Studio Entry Point -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>

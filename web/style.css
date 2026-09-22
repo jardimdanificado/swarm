@@ -1,0 +1,383 @@
+/**
+ * Scratch++ (Swarm) Web Studio Stylesheet
+ * Chalkboard Dark Aesthetic matching Brack Modular Synthesizer Studio
+ */
+
+:root {
+    --bg: #0c100e;
+    --chalk-board: #151c19;
+    --chalk-white: #f5f6fa;
+    --chalk-yellow: #feca57;
+    --chalk-cyan: #48dbfb;
+    --chalk-pink: #ff6b6b;
+    --chalk-green: #1dd1a1;
+    --chalk-purple: #a29bfe;
+    --chalk-orange: #ff9f43;
+    --editor-bg: #111714;
+    --text-dim: #8395a7;
+    --panel-border: #283731;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+}
+
+html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--chalk-white);
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* =========================================================================
+ * Header Toolbar
+ * ========================================================================= */
+header {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(180deg, #18221e 0%, #0f1513 100%);
+    border-bottom: 2px solid var(--panel-border);
+    padding: 0 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    z-index: 100;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+}
+
+h1 {
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffffff;
+    font-weight: 900;
+}
+
+.badge-wasm {
+    background: #5F3DC4;
+    color: #ffffff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 800;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-play-toggle {
+    background: #059669;
+    color: #ffffff;
+    border: 2px solid #10b981;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(5, 150, 105, 0.4);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-play-toggle:hover {
+    transform: scale(1.08);
+    background: #10b981;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.7);
+}
+
+.btn-play-toggle.running {
+    background: #dc2626;
+    border-color: #ef4444;
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
+    animation: pulse-play 1.3s infinite ease-in-out;
+}
+
+.btn-play-toggle .icon-play { display: block; }
+.btn-play-toggle .icon-stop { display: none; }
+.btn-play-toggle.running .icon-play { display: none; }
+.btn-play-toggle.running .icon-stop { display: block; }
+
+@keyframes pulse-play {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+.project-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #111714;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+}
+
+#example-select {
+    background: #18221e;
+    color: #ffffff;
+    border: 1px solid #384d43;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+    outline: none;
+    max-width: 260px;
+    cursor: pointer;
+}
+
+button, select {
+    background: #18221e;
+    color: #e2e8f0;
+    border: 1px solid #384d43;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+button:hover, select:hover {
+    background: #23302a;
+    border-color: #55efc4;
+    color: #ffffff;
+}
+
+button.btn-accent {
+    background: #059669;
+    border-color: #34d399;
+    color: #ffffff;
+    font-weight: 800;
+}
+
+button.btn-accent:hover {
+    background: #10b981;
+    box-shadow: 0 0 10px rgba(52, 211, 153, 0.4);
+}
+
+/* =========================================================================
+ * Main Workspace Grid Layout (Split Screen)
+ * ========================================================================= */
+.workspace-grid {
+    flex: 1;
+    width: 100vw;
+    height: calc(100vh - 48px - 26px);
+    display: flex;
+    position: relative;
+    background: var(--bg);
+}
+
+.editor-pane {
+    flex: 1;
+    height: 100%;
+    position: relative;
+}
+
+#blockly-div {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Side Inspector & Output Panel */
+.inspector-pane {
+    width: 480px;
+    height: 100%;
+    background: #111714;
+    border-left: 2px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+}
+
+.tab-nav {
+    display: flex;
+    background: #18221e;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 10px 8px;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    justify-content: center;
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: #ffffff;
+}
+
+.tab-btn.active {
+    color: #55efc4;
+    border-bottom: 2px solid #55efc4;
+    background: #141c18;
+}
+
+.tab-content {
+    flex: 1;
+    display: none;
+    overflow-y: auto;
+    padding: 12px;
+    font-family: monospace;
+    font-size: 11px;
+    position: relative;
+}
+
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Terminal Console View */
+#console-output {
+    flex: 1;
+    background: #090d0b;
+    border: 1px solid #1c2823;
+    border-radius: 4px;
+    padding: 10px;
+    color: #55efc4;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.console-entry { margin-bottom: 4px; }
+.console-entry.info { color: #55efc4; }
+.console-entry.warn { color: #feca57; }
+.console-entry.error { color: #ff6b6b; }
+.console-entry.system { color: #8395a7; font-style: italic; }
+
+/* Canvas View */
+.canvas-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 100%;
+}
+
+#runtime-canvas {
+    background: #000000;
+    border: 2px solid var(--panel-border);
+    border-radius: 6px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+/* Disassembly / Inspector text */
+.code-viewer {
+    background: #090d0b;
+    border: 1px solid #1c2823;
+    border-radius: 4px;
+    padding: 10px;
+    color: #dcdde1;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.4;
+    flex: 1;
+}
+
+/* Footer Status Bar */
+.chalk-footer {
+    width: 100%;
+    height: 26px;
+    padding: 0 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #111714;
+    border-top: 1px solid #202b26;
+    font-size: 11px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    z-index: 100;
+}
+
+/* High-contrast block text for darker block backgrounds */
+.blocklyText, .blocklyHtmlInput, .blocklyDropdownText {
+    fill: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+.blocklyEditableText > rect {
+    fill: rgba(0, 0, 0, 0.22) !important;
+    stroke: rgba(255, 255, 255, 0.25) !important;
+}
+
+.blocklyToolboxDiv {
+    width: 195px !important;
+    background-color: #141c18 !important;
+    border-right: 1px solid var(--panel-border) !important;
+    overflow-y: auto !important;
+}
+
+.blocklyTreeLabel {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: #dcdde1 !important;
+}
+
+.blocklyFlyoutBackground {
+    fill: #111714 !important;
+    fill-opacity: 0.96 !important;
+}
+
+.blocklyMainBackground {
+    fill: #0c100e !important;
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    bottom: 40px;
+    right: 20px;
+    background: #10b981;
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: translateY(10px);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast.toast-error { background: #ef4444; }
+.toast.toast-warn { background: #f59e0b; }
