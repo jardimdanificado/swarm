@@ -1,6 +1,6 @@
 /**
  * Scratch++ AST Generator for Blockly
- * 100% Coverage of WebAssembly 1.0 AST Generation (Imports, Exports, Start, Tables, Control, Memory)
+ * 100% Coverage of WebAssembly 1.0 AST Generation (Typed & Generic Blocks)
  */
 
 import { Type } from '../../src/compiler/types.js';
@@ -80,10 +80,10 @@ export class ASTGenerator {
             } else if (block.type === 'spp_function_def') {
                 const funcNode = this.parseFunctionDef(block);
                 if (funcNode) functions.push(funcNode);
-            } else if (block.type === 'spp_global_declare') {
+            } else if (block.type === 'spp_global_declare' || block.type.startsWith('spp_global_')) {
                 const gNode = this.parseGlobalDeclare(block);
                 if (gNode) globals.push(gNode);
-            } else if (block.type === 'spp_declare') {
+            } else if (block.type === 'spp_declare' || block.type.startsWith('spp_declare_')) {
                 const declNode = this.parseDeclare(block, true);
                 if (declNode) globals.push(declNode);
             }
@@ -97,18 +97,35 @@ export class ASTGenerator {
         const module = block.getFieldValue('MODULE') || 'env';
         const alias = block.getFieldValue('ALIAS') || name;
         const returnType = block.getFieldValue('RETURN_TYPE') || Type.VOID;
-        const paramsRaw = block.getFieldValue('PARAMS') || '';
 
         const params = [];
-        if (paramsRaw.trim()) {
-            const parts = paramsRaw.split(',');
-            for (const part of parts) {
-                const [pName, pType] = part.split(':').map(s => s.trim());
-                if (pName && pType) {
-                    params.push({ name: pName, type: pType });
+        let paramBlock = block.getInputTargetBlock('PARAMS');
+        while (paramBlock) {
+            if (paramBlock.type === 'spp_param') {
+                const pName = paramBlock.getFieldValue('NAME') || `p${params.length}`;
+                const pType = paramBlock.getFieldValue('TYPE') || Type.I32;
+                params.push({ name: pName, type: pType });
+            } else if (paramBlock.type.startsWith('spp_param_')) {
+                const pName = paramBlock.getFieldValue('NAME') || `p${params.length}`;
+                const pType = paramBlock.type.replace('spp_param_', '');
+                params.push({ name: pName, type: pType === 'func' ? Type.FUNCAO : pType });
+            }
+            paramBlock = paramBlock.getNextBlock();
+        }
+
+        if (params.length === 0) {
+            const paramsRaw = block.getFieldValue('PARAMS') || '';
+            if (paramsRaw.trim()) {
+                const parts = paramsRaw.split(',');
+                for (const part of parts) {
+                    const [pName, pType] = part.split(':').map(s => s.trim());
+                    if (pName && pType) {
+                        params.push({ name: pName, type: pType });
+                    }
                 }
             }
         }
+
         return new ImportFuncNode(module, name, alias, params, returnType);
     }
 
@@ -131,15 +148,31 @@ export class ASTGenerator {
     parseFunctionDef(block) {
         const name = block.getFieldValue('NAME') || 'funcao';
         const returnType = block.getFieldValue('RETURN_TYPE') || Type.VOID;
-        const paramsRaw = block.getFieldValue('PARAMS') || '';
 
         const params = [];
-        if (paramsRaw.trim()) {
-            const parts = paramsRaw.split(',');
-            for (const part of parts) {
-                const [pName, pType] = part.split(':').map(s => s.trim());
-                if (pName && pType) {
-                    params.push({ name: pName, type: pType });
+        let paramBlock = block.getInputTargetBlock('PARAMS');
+        while (paramBlock) {
+            if (paramBlock.type === 'spp_param') {
+                const pName = paramBlock.getFieldValue('NAME') || `p${params.length}`;
+                const pType = paramBlock.getFieldValue('TYPE') || Type.I32;
+                params.push({ name: pName, type: pType });
+            } else if (paramBlock.type.startsWith('spp_param_')) {
+                const pName = paramBlock.getFieldValue('NAME') || `p${params.length}`;
+                const pType = paramBlock.type.replace('spp_param_', '');
+                params.push({ name: pName, type: pType === 'func' ? Type.FUNCAO : pType });
+            }
+            paramBlock = paramBlock.getNextBlock();
+        }
+
+        if (params.length === 0) {
+            const paramsRaw = block.getFieldValue('PARAMS') || '';
+            if (paramsRaw.trim()) {
+                const parts = paramsRaw.split(',');
+                for (const part of parts) {
+                    const [pName, pType] = part.split(':').map(s => s.trim());
+                    if (pName && pType) {
+                        params.push({ name: pName, type: pType });
+                    }
                 }
             }
         }
@@ -151,7 +184,13 @@ export class ASTGenerator {
     }
 
     parseGlobalDeclare(block) {
-        const type = block.getFieldValue('TYPE') || Type.I32;
+        let type = Type.I32;
+        if (block.type === 'spp_global_declare') {
+            type = block.getFieldValue('TYPE') || Type.I32;
+        } else if (block.type.startsWith('spp_global_')) {
+            type = block.type.replace('spp_global_', '');
+        }
+
         const name = block.getFieldValue('NAME') || 'g';
         const mutable = block.getFieldValue('MUTABLE') === 'mut';
         const initBlock = block.getInputTargetBlock('INIT');
@@ -177,13 +216,15 @@ export class ASTGenerator {
     parseStatement(block) {
         if (!block) return null;
 
+        if (block.type === 'spp_declare' || block.type.startsWith('spp_declare_')) {
+            return this.parseDeclare(block, false);
+        }
+
+        if (block.type === 'spp_global_declare' || block.type.startsWith('spp_global_')) {
+            return this.parseGlobalDeclare(block);
+        }
+
         switch (block.type) {
-            case 'spp_declare':
-                return this.parseDeclare(block, false);
-
-            case 'spp_global_declare':
-                return this.parseGlobalDeclare(block);
-
             case 'spp_set': {
                 const name = block.getFieldValue('NAME') || 'x';
                 const valBlock = block.getInputTargetBlock('VALUE');
@@ -276,6 +317,10 @@ export class ASTGenerator {
                 return new PrintNode(valExpr);
             }
 
+            case 'spp_i32_store':
+            case 'spp_i64_store':
+            case 'spp_f32_store':
+            case 'spp_f64_store':
             case 'spp_mem_store': {
                 const widthStr = block.getFieldValue('WIDTH');
                 const width = widthStr === 'u8' ? 1 : (widthStr === 'u16' ? 2 : (widthStr === 'u32' ? 4 : null));
@@ -305,7 +350,13 @@ export class ASTGenerator {
     }
 
     parseDeclare(block, isGlobal = false) {
-        const type = block.getFieldValue('TYPE') || Type.I32;
+        let type = Type.I32;
+        if (block.type === 'spp_declare') {
+            type = block.getFieldValue('TYPE') || Type.I32;
+        } else if (block.type.startsWith('spp_declare_')) {
+            type = block.type.replace('spp_declare_', '');
+        }
+
         const name = block.getFieldValue('NAME') || 'x';
         const initBlock = block.getInputTargetBlock('INIT');
         const initExpr = initBlock ? this.parseExpression(initBlock) : new ConstNode(0, type);
@@ -335,6 +386,11 @@ export class ASTGenerator {
                 return new StringLiteralNode(block.getFieldValue('VALUE') || '');
 
             case 'spp_get':
+            case 'spp_get_i32':
+            case 'spp_get_i64':
+            case 'spp_get_f32':
+            case 'spp_get_f64':
+            case 'spp_get_bool':
                 return new GetVarNode(block.getFieldValue('NAME') || 'x');
 
             case 'spp_tee': {
@@ -354,9 +410,19 @@ export class ASTGenerator {
                 return new SelectNode(cond, trueExpr, falseExpr);
             }
 
+            case 'spp_i32_binop':
+            case 'spp_i64_binop':
+            case 'spp_f32_binop':
+            case 'spp_f64_binop':
             case 'spp_binary_op': {
-                const op = block.getFieldValue('OP') || '+';
-                const signedness = block.getFieldValue('SIGNEDNESS') || 'signed';
+                let op = block.getFieldValue('OP') || '+';
+                let signedness = block.getFieldValue('SIGNEDNESS') || 'signed';
+                if (op === '/u' || op === '%u' || op === '>>u') {
+                    signedness = 'unsigned';
+                    if (op === '/u') op = '/';
+                    if (op === '%u') op = '%';
+                    if (op === '>>u') op = '>>';
+                }
                 const lBlock = block.getInputTargetBlock('LEFT');
                 const rBlock = block.getInputTargetBlock('RIGHT');
                 const lExpr = lBlock ? this.parseExpression(lBlock) : new ConstNode(0, Type.I32);
@@ -364,11 +430,68 @@ export class ASTGenerator {
                 return new BinaryOpNode(op, lExpr, rExpr, signedness);
             }
 
+            case 'spp_i32_relop':
+            case 'spp_i64_relop':
+            case 'spp_f32_relop':
+            case 'spp_f64_relop': {
+                let op = block.getFieldValue('OP') || '==';
+                let signedness = 'signed';
+                if (op.endsWith('u')) {
+                    signedness = 'unsigned';
+                    op = op.slice(0, -1);
+                }
+                const lBlock = block.getInputTargetBlock('LEFT');
+                const rBlock = block.getInputTargetBlock('RIGHT');
+                const lExpr = lBlock ? this.parseExpression(lBlock) : new ConstNode(0, Type.I32);
+                const rExpr = rBlock ? this.parseExpression(rBlock) : new ConstNode(0, Type.I32);
+                return new BinaryOpNode(op, lExpr, rExpr, signedness);
+            }
+
+            case 'spp_i32_unop':
+            case 'spp_i64_unop':
+            case 'spp_f32_unop':
+            case 'spp_f64_unop':
             case 'spp_unary_op': {
                 const op = block.getFieldValue('OP') || 'NEG';
                 const eBlock = block.getInputTargetBlock('EXPR');
                 const expr = eBlock ? this.parseExpression(eBlock) : new ConstNode(0, Type.I32);
                 return new UnaryOpNode(op, expr);
+            }
+
+            case 'spp_f32_convert_i32':
+            case 'spp_f64_convert_i32':
+            case 'spp_f64_convert_i64':
+            case 'spp_i32_trunc_f32':
+            case 'spp_i32_trunc_f64':
+            case 'spp_i64_trunc_f32':
+            case 'spp_i64_trunc_f64':
+            case 'spp_f64_promote_f32':
+            case 'spp_f32_demote_f64':
+            case 'spp_i64_extend_i32':
+            case 'spp_i32_wrap_i64': {
+                let targetType = Type.I32;
+                if (block.type.startsWith('spp_f32_')) targetType = Type.F32;
+                else if (block.type.startsWith('spp_f64_')) targetType = Type.F64;
+                else if (block.type.startsWith('spp_i64_')) targetType = Type.I64;
+                else if (block.type.startsWith('spp_i32_')) targetType = Type.I32;
+
+                const signedness = block.getFieldValue('SIGNEDNESS') || 'signed';
+                const vBlock = block.getInputTargetBlock('VALUE');
+                const valExpr = vBlock ? this.parseExpression(vBlock) : new ConstNode(0, Type.I32);
+                return new ConvertNode(valExpr, targetType, true, signedness);
+            }
+
+            case 'spp_reinterpret_f32_as_i32':
+            case 'spp_reinterpret_i32_as_f32':
+            case 'spp_reinterpret_f64_as_i64':
+            case 'spp_reinterpret_i64_as_f64': {
+                let targetType = Type.I32;
+                if (block.type === 'spp_reinterpret_i32_as_f32') targetType = Type.F32;
+                else if (block.type === 'spp_reinterpret_f64_as_i64') targetType = Type.I64;
+                else if (block.type === 'spp_reinterpret_i64_as_f64') targetType = Type.F64;
+                const vBlock = block.getInputTargetBlock('VALUE');
+                const valExpr = vBlock ? this.parseExpression(vBlock) : new ConstNode(0, Type.I32);
+                return new ReinterpretNode(valExpr, targetType);
             }
 
             case 'spp_convert': {
@@ -392,8 +515,15 @@ export class ASTGenerator {
                 return new AllocBufferNode(sExpr);
             }
 
+            case 'spp_i32_load':
+            case 'spp_i64_load':
+            case 'spp_f32_load':
+            case 'spp_f64_load':
             case 'spp_mem_load': {
-                const widthType = block.getFieldValue('WIDTH_TYPE') || 'i32';
+                let widthType = block.getFieldValue('WIDTH_TYPE') || 'i32';
+                if (block.type === 'spp_f32_load') widthType = 'f32';
+                if (block.type === 'spp_f64_load') widthType = 'f64';
+                
                 const staticOffset = Number(block.getFieldValue('STATIC_OFFSET') || 0);
                 let type = Type.I32;
                 let width = null;

@@ -1,6 +1,6 @@
 /**
  * Scratch++ Blockly Block Definitions
- * 100% WebAssembly 1.0 Instruction Coverage with Imports, Exports, Start & Tables
+ * 100% WebAssembly 1.0 Instruction Coverage with Strict Connection Type Checking
  */
 
 import { TYPE_COLORS } from './types_theme.js';
@@ -9,6 +9,58 @@ export function registerScratchPPBlocks(Blockly) {
     // -------------------------------------------------------------------------
     // 1. IMPORTS & EXPORTS & START (WASM 1.0)
     // -------------------------------------------------------------------------
+    
+    // Generic Param Block
+    Blockly.Blocks['spp_param'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("📌 param")
+                .appendField(new Blockly.FieldTextInput("x"), "NAME")
+                .appendField(":")
+                .appendField(new Blockly.FieldDropdown([
+                    ["i32", "i32"],
+                    ["i64", "i64"],
+                    ["f32", "f32"],
+                    ["f64", "f64"],
+                    ["bool", "bool"],
+                    ["texto", "texto"],
+                    ["buffer", "buffer"],
+                    ["função", "função"]
+                ]), "TYPE");
+            this.setPreviousStatement(true, "spp_param");
+            this.setNextStatement(true, "spp_param");
+            this.setColour(TYPE_COLORS.functions);
+            this.setTooltip("Define um parâmetro tipado.");
+        }
+    };
+
+    // Specific Typed Param Blocks
+    const paramTypes = [
+        { id: 'spp_param_i32', type: 'i32', color: TYPE_COLORS.i32, label: 'i32' },
+        { id: 'spp_param_i64', type: 'i64', color: TYPE_COLORS.i64, label: 'i64' },
+        { id: 'spp_param_f32', type: 'f32', color: TYPE_COLORS.f32, label: 'f32' },
+        { id: 'spp_param_f64', type: 'f64', color: TYPE_COLORS.f64, label: 'f64' },
+        { id: 'spp_param_bool', type: 'bool', color: TYPE_COLORS.bool, label: 'bool' },
+        { id: 'spp_param_texto', type: 'texto', color: TYPE_COLORS.texto, label: 'texto' },
+        { id: 'spp_param_buffer', type: 'buffer', color: TYPE_COLORS.buffer, label: 'buffer' },
+        { id: 'spp_param_func', type: 'função', color: TYPE_COLORS.funcao, label: 'função' }
+    ];
+
+    for (const pt of paramTypes) {
+        Blockly.Blocks[pt.id] = {
+            init: function() {
+                this.appendDummyInput()
+                    .appendField(`📌 param`)
+                    .appendField(new Blockly.FieldTextInput("x"), "NAME")
+                    .appendField(`: ${pt.label}`);
+                this.setPreviousStatement(true, "spp_param");
+                this.setNextStatement(true, "spp_param");
+                this.setColour(pt.color);
+                this.setTooltip(`Parâmetro do tipo ${pt.label}`);
+            }
+        };
+    }
+
     Blockly.Blocks['spp_import_func'] = {
         init: function() {
             this.appendDummyInput()
@@ -19,8 +71,6 @@ export function registerScratchPPBlocks(Blockly) {
                 .appendField("] como:")
                 .appendField(new Blockly.FieldTextInput("math_sin"), "ALIAS");
             this.appendDummyInput()
-                .appendField("params (nome:tipo):")
-                .appendField(new Blockly.FieldTextInput("x:f64"), "PARAMS")
                 .appendField("retorno:")
                 .appendField(new Blockly.FieldDropdown([
                     ["void", "void"],
@@ -29,6 +79,7 @@ export function registerScratchPPBlocks(Blockly) {
                     ["f32", "f32"],
                     ["f64", "f64"]
                 ]), "RETURN_TYPE");
+            this.appendStatementInput("PARAMS").setCheck("spp_param").appendField("parâmetros:");
             this.setColour('#6366f1');
             this.setTooltip("Importa uma função externa de outro módulo Wasm ou do Host.");
         }
@@ -131,7 +182,7 @@ export function registerScratchPPBlocks(Blockly) {
 
     Blockly.Blocks['spp_if'] = {
         init: function() {
-            this.appendValueInput("COND").appendField("se (if)");
+            this.appendValueInput("COND").setCheck(["bool", "i32"]).appendField("se (if)");
             this.appendStatementInput("THEN").appendField("então");
             this.appendStatementInput("ELSE").appendField("senão");
             this.setPreviousStatement(true);
@@ -143,7 +194,7 @@ export function registerScratchPPBlocks(Blockly) {
 
     Blockly.Blocks['spp_repeat'] = {
         init: function() {
-            this.appendValueInput("TIMES").appendField("repita");
+            this.appendValueInput("TIMES").setCheck(["i32", "i64"]).appendField("repita");
             this.appendDummyInput().appendField("vezes");
             this.appendStatementInput("DO").appendField("faça");
             this.setPreviousStatement(true);
@@ -155,7 +206,7 @@ export function registerScratchPPBlocks(Blockly) {
 
     Blockly.Blocks['spp_while'] = {
         init: function() {
-            this.appendValueInput("COND").appendField("enquanto");
+            this.appendValueInput("COND").setCheck(["bool", "i32"]).appendField("enquanto");
             this.appendStatementInput("DO").appendField("faça");
             this.setPreviousStatement(true);
             this.setNextStatement(true);
@@ -178,6 +229,7 @@ export function registerScratchPPBlocks(Blockly) {
     Blockly.Blocks['spp_br_if'] = {
         init: function() {
             this.appendValueInput("COND")
+                .setCheck(["bool", "i32"])
                 .appendField("desviar se (br_if)");
             this.appendDummyInput()
                 .appendField("nível:")
@@ -192,6 +244,7 @@ export function registerScratchPPBlocks(Blockly) {
     Blockly.Blocks['spp_br_table'] = {
         init: function() {
             this.appendValueInput("INDEX")
+                .setCheck("i32")
                 .appendField("tabela de salto (br_table) índice:");
             this.appendDummyInput()
                 .appendField("alvos:")
@@ -208,7 +261,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendValueInput("TRUE_VAL").appendField("selecionar (select)");
             this.appendValueInput("FALSE_VAL").appendField("senão");
-            this.appendValueInput("COND").appendField("se cond:");
+            this.appendValueInput("COND").setCheck(["bool", "i32"]).appendField("se cond:");
             this.setOutput(true);
             this.setInputsInline(true);
             this.setColour(TYPE_COLORS.control);
@@ -255,8 +308,10 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 3. VARIÁVEIS, GLOBAIS E LITERAIS
+    // 3. VARIÁVEIS, GLOBAIS E CONSTANTES (TIPAGEM ESTRITA)
     // -------------------------------------------------------------------------
+    
+    // Generic fallback
     Blockly.Blocks['spp_declare'] = {
         init: function() {
             this.appendValueInput("INIT")
@@ -276,10 +331,38 @@ export function registerScratchPPBlocks(Blockly) {
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.i32);
-            this.setTooltip("Declara uma variável local tipada.");
+            this.setTooltip("Declara uma variável local.");
         }
     };
 
+    // Type-specific Local Declarations
+    const declTypes = [
+        { id: 'spp_declare_i32', type: 'i32', check: ['i32', 'bool'], color: TYPE_COLORS.i32, label: 'i32' },
+        { id: 'spp_declare_i64', type: 'i64', check: 'i64', color: TYPE_COLORS.i64, label: 'i64' },
+        { id: 'spp_declare_f32', type: 'f32', check: 'f32', color: TYPE_COLORS.f32, label: 'f32' },
+        { id: 'spp_declare_f64', type: 'f64', check: 'f64', color: TYPE_COLORS.f64, label: 'f64' },
+        { id: 'spp_declare_bool', type: 'bool', check: ['bool', 'i32'], color: TYPE_COLORS.bool, label: 'bool' },
+        { id: 'spp_declare_texto', type: 'texto', check: 'texto', color: TYPE_COLORS.texto, label: 'texto' },
+        { id: 'spp_declare_buffer', type: 'buffer', check: 'buffer', color: TYPE_COLORS.buffer, label: 'buffer' }
+    ];
+
+    for (const dt of declTypes) {
+        Blockly.Blocks[dt.id] = {
+            init: function() {
+                this.appendValueInput("INIT")
+                    .setCheck(dt.check)
+                    .appendField(`declare ${dt.label}`)
+                    .appendField(new Blockly.FieldTextInput("x"), "NAME")
+                    .appendField("=");
+                this.setPreviousStatement(true);
+                this.setNextStatement(true);
+                this.setColour(dt.color);
+                this.setTooltip(`Declara uma variável local ${dt.label} (bloqueia tipos incompatíveis).`);
+            }
+        };
+    }
+
+    // Generic Global
     Blockly.Blocks['spp_global_declare'] = {
         init: function() {
             this.appendValueInput("INIT")
@@ -299,14 +382,42 @@ export function registerScratchPPBlocks(Blockly) {
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.i64);
-            this.setTooltip("Declara uma variável global de módulo WebAssembly.");
+            this.setTooltip("Declara uma variável global.");
         }
     };
+
+    // Specific Globals
+    const globalTypes = [
+        { id: 'spp_global_i32', type: 'i32', check: ['i32', 'bool'], color: TYPE_COLORS.i32, label: 'i32' },
+        { id: 'spp_global_i64', type: 'i64', check: 'i64', color: TYPE_COLORS.i64, label: 'i64' },
+        { id: 'spp_global_f32', type: 'f32', check: 'f32', color: TYPE_COLORS.f32, label: 'f32' },
+        { id: 'spp_global_f64', type: 'f64', check: 'f64', color: TYPE_COLORS.f64, label: 'f64' }
+    ];
+
+    for (const gt of globalTypes) {
+        Blockly.Blocks[gt.id] = {
+            init: function() {
+                this.appendValueInput("INIT")
+                    .setCheck(gt.check)
+                    .appendField(`declare global ${gt.label}`)
+                    .appendField(new Blockly.FieldTextInput("g"), "NAME")
+                    .appendField(new Blockly.FieldDropdown([
+                        ["mutável", "mut"],
+                        ["imutável (const)", "const"]
+                    ]), "MUTABLE")
+                    .appendField("=");
+                this.setPreviousStatement(true);
+                this.setNextStatement(true);
+                this.setColour(gt.color);
+                this.setTooltip(`Declara global ${gt.label}.`);
+            }
+        };
+    }
 
     Blockly.Blocks['spp_set'] = {
         init: function() {
             this.appendValueInput("VALUE")
-                .appendField("local.set / global.set")
+                .appendField("set")
                 .appendField(new Blockly.FieldTextInput("x"), "NAME")
                 .appendField("=");
             this.setPreviousStatement(true);
@@ -339,11 +450,34 @@ export function registerScratchPPBlocks(Blockly) {
         }
     };
 
+    // Typed Getters (strictly typed outputs)
+    const typedGetters = [
+        { id: 'spp_get_i32', type: 'i32', color: TYPE_COLORS.i32, label: 'get i32' },
+        { id: 'spp_get_i64', type: 'i64', color: TYPE_COLORS.i64, label: 'get i64' },
+        { id: 'spp_get_f32', type: 'f32', color: TYPE_COLORS.f32, label: 'get f32' },
+        { id: 'spp_get_f64', type: 'f64', color: TYPE_COLORS.f64, label: 'get f64' },
+        { id: 'spp_get_bool', type: 'bool', color: TYPE_COLORS.bool, label: 'get bool' }
+    ];
+    for (const tg of typedGetters) {
+        Blockly.Blocks[tg.id] = {
+            init: function() {
+                this.appendDummyInput()
+                    .appendField(tg.label)
+                    .appendField(new Blockly.FieldTextInput("x"), "NAME");
+                this.setOutput(true, tg.type);
+                this.setColour(tg.color);
+                this.setTooltip(`Lê variável garantindo tipo ${tg.type}.`);
+            }
+        };
+    }
+
+    // Literals / Constants
     Blockly.Blocks['spp_const_i32'] = {
         init: function() {
             this.appendDummyInput().appendField("i32:").appendField(new Blockly.FieldNumber(0), "VALUE");
             this.setOutput(true, "i32");
             this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Constante inteira 32 bits (i32.const).");
         }
     };
 
@@ -352,6 +486,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendDummyInput().appendField("i64:").appendField(new Blockly.FieldTextInput("0"), "VALUE");
             this.setOutput(true, "i64");
             this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Constante inteira 64 bits (i64.const).");
         }
     };
 
@@ -360,6 +495,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendDummyInput().appendField("f32:").appendField(new Blockly.FieldNumber(0.0), "VALUE");
             this.setOutput(true, "f32");
             this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Constante ponto flutuante 32 bits (f32.const).");
         }
     };
 
@@ -368,6 +504,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendDummyInput().appendField("f64:").appendField(new Blockly.FieldNumber(0.0), "VALUE");
             this.setOutput(true, "f64");
             this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Constante ponto flutuante 64 bits (f64.const).");
         }
     };
 
@@ -379,6 +516,7 @@ export function registerScratchPPBlocks(Blockly) {
             ]), "VALUE");
             this.setOutput(true, "bool");
             this.setColour(TYPE_COLORS.bool);
+            this.setTooltip("Valor booleano.");
         }
     };
 
@@ -390,12 +528,281 @@ export function registerScratchPPBlocks(Blockly) {
                 .appendField("\"");
             this.setOutput(true, "texto");
             this.setColour(TYPE_COLORS.texto);
+            this.setTooltip("String literal.");
         }
     };
 
     // -------------------------------------------------------------------------
-    // 4. OPERAÇÕES NUMÉRICAS & BITWISE (100% WASM 1.0)
+    // 4. OPERAÇÕES ESPECÍFICAS POR TIPO (ZERO CONFUSÃO INT/FLOAT)
     // -------------------------------------------------------------------------
+    
+    // --- i32 Operações ---
+    Blockly.Blocks['spp_i32_binop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck(["i32", "bool"]);
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["+ (i32.add)", "+"],
+                    ["- (i32.sub)", "-"],
+                    ["× (i32.mul)", "*"],
+                    ["÷s (i32.div_s)", "/"],
+                    ["÷u (i32.div_u)", "/u"],
+                    ["%s (i32.rem_s)", "%"],
+                    ["%u (i32.rem_u)", "%u"],
+                    ["AND (i32.and)", "AND"],
+                    ["OR (i32.or)", "OR"],
+                    ["XOR (i32.xor)", "XOR"],
+                    ["<< (i32.shl)", "<<" ],
+                    [">>s (i32.shr_s)", ">>"],
+                    [">>u (i32.shr_u)", ">>u"],
+                    ["ROTL (i32.rotl)", "ROTL"],
+                    ["ROTR (i32.rotr)", "ROTR"]
+                ]), "OP");
+            this.appendValueInput("RIGHT").setCheck(["i32", "bool"]);
+            this.setInputsInline(true);
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Operação binária inteira i32 (rejeita floats!).");
+        }
+    };
+
+    Blockly.Blocks['spp_i32_relop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck(["i32", "bool"]);
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["= (i32.eq)", "=="],
+                    ["≠ (i32.ne)", "!="],
+                    ["< s (i32.lt_s)", "<"],
+                    ["< u (i32.lt_u)", "<u"],
+                    ["≤ s (i32.le_s)", "<="],
+                    ["≤ u (i32.le_u)", "<=u"],
+                    ["> s (i32.gt_s)", ">"],
+                    ["> u (i32.gt_u)", ">u"],
+                    ["≥ s (i32.ge_s)", ">="],
+                    ["≥ u (i32.ge_u)", ">=u"]
+                ]), "OP");
+            this.appendValueInput("RIGHT").setCheck(["i32", "bool"]);
+            this.setInputsInline(true);
+            this.setOutput(true, "bool");
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Comparação inteira i32 -> bool.");
+        }
+    };
+
+    Blockly.Blocks['spp_i32_unop'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["i32.clz (zeros à esquerda)", "CLZ"],
+                    ["i32.ctz (zeros à direita)", "CTZ"],
+                    ["i32.popcnt (contar bits 1)", "POPCNT"],
+                    ["i32.eqz (é zero?)", "EQZ"]
+                ]), "OP");
+            this.appendValueInput("EXPR").setCheck(["i32", "bool"]);
+            this.setInputsInline(true);
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Operação unária i32.");
+        }
+    };
+
+    // --- i64 Operações ---
+    Blockly.Blocks['spp_i64_binop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck("i64");
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["+ (i64.add)", "+"],
+                    ["- (i64.sub)", "-"],
+                    ["× (i64.mul)", "*"],
+                    ["÷s (i64.div_s)", "/"],
+                    ["÷u (i64.div_u)", "/u"],
+                    ["%s (i64.rem_s)", "%"],
+                    ["%u (i64.rem_u)", "%u"],
+                    ["AND (i64.and)", "AND"],
+                    ["OR (i64.or)", "OR"],
+                    ["XOR (i64.xor)", "XOR"],
+                    ["<< (i64.shl)", "<<" ],
+                    [">>s (i64.shr_s)", ">>"],
+                    [">>u (i64.shr_u)", ">>u"],
+                    ["ROTL (i64.rotl)", "ROTL"],
+                    ["ROTR (i64.rotr)", "ROTR"]
+                ]), "OP");
+            this.appendValueInput("RIGHT").setCheck("i64");
+            this.setInputsInline(true);
+            this.setOutput(true, "i64");
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Operação binária inteira i64.");
+        }
+    };
+
+    Blockly.Blocks['spp_i64_relop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck("i64");
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["= (i64.eq)", "=="],
+                    ["≠ (i64.ne)", "!="],
+                    ["< s (i64.lt_s)", "<"],
+                    ["< u (i64.lt_u)", "<u"],
+                    ["≤ s (i64.le_s)", "<="],
+                    ["≤ u (i64.le_u)", "<=u"],
+                    ["> s (i64.gt_s)", ">"],
+                    ["> u (i64.gt_u)", ">u"],
+                    ["≥ s (i64.ge_s)", ">="],
+                    ["≥ u (i64.ge_u)", ">=u"]
+                ]), "OP");
+            this.appendValueInput("RIGHT").setCheck("i64");
+            this.setInputsInline(true);
+            this.setOutput(true, "bool");
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Comparação inteira i64 -> bool.");
+        }
+    };
+
+    Blockly.Blocks['spp_i64_unop'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["i64.clz", "CLZ"],
+                    ["i64.ctz", "CTZ"],
+                    ["i64.popcnt", "POPCNT"],
+                    ["i64.eqz", "EQZ"]
+                ]), "OP");
+            this.appendValueInput("EXPR").setCheck("i64");
+            this.setInputsInline(true);
+            this.setOutput(true, "i64");
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Operação unária i64.");
+        }
+    };
+
+    // --- f32 Operações ---
+    Blockly.Blocks['spp_f32_binop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck("f32");
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["+ (f32.add)", "+"],
+                    ["- (f32.sub)", "-"],
+                    ["× (f32.mul)", "*"],
+                    ["÷ (f32.div)", "/"],
+                    ["min (f32.min)", "MIN"],
+                    ["max (f32.max)", "MAX"],
+                    ["copysign (f32.copysign)", "COPYSIGN"]
+                ]), "OP");
+            this.appendValueInput("RIGHT").setCheck("f32");
+            this.setInputsInline(true);
+            this.setOutput(true, "f32");
+            this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Operação binária de ponto flutuante f32 (rejeita inteiros!).");
+        }
+    };
+
+    Blockly.Blocks['spp_f32_relop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck("f32");
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["= (f32.eq)", "=="],
+                    ["≠ (f32.ne)", "!="],
+                    ["< (f32.lt)", "<"],
+                    ["≤ (f32.le)", "<="],
+                    ["> (f32.gt)", ">"],
+                    ["≥ (f32.ge)", ">="]
+                ]), "OP");
+            this.appendValueInput("RIGHT").setCheck("f32");
+            this.setInputsInline(true);
+            this.setOutput(true, "bool");
+            this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Comparação ponto flutuante f32 -> bool.");
+        }
+    };
+
+    Blockly.Blocks['spp_f32_unop'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["abs (f32.abs)", "ABS"],
+                    ["neg (-x) (f32.neg)", "NEG"],
+                    ["ceil (f32.ceil)", "CEIL"],
+                    ["floor (f32.floor)", "FLOOR"],
+                    ["trunc (f32.trunc)", "TRUNC"],
+                    ["nearest (f32.nearest)", "NEAREST"],
+                    ["sqrt (f32.sqrt)", "SQRT"]
+                ]), "OP");
+            this.appendValueInput("EXPR").setCheck("f32");
+            this.setInputsInline(true);
+            this.setOutput(true, "f32");
+            this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Operação unária f32.");
+        }
+    };
+
+    // --- f64 Operações ---
+    Blockly.Blocks['spp_f64_binop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck("f64");
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["+ (f64.add)", "+"],
+                    ["- (f64.sub)", "-"],
+                    ["× (f64.mul)", "*"],
+                    ["÷ (f64.div)", "/"],
+                    ["min (f64.min)", "MIN"],
+                    ["max (f64.max)", "MAX"],
+                    ["copysign (f64.copysign)", "COPYSIGN"]
+                ]), "OP");
+            this.appendValueInput("RIGHT").setCheck("f64");
+            this.setInputsInline(true);
+            this.setOutput(true, "f64");
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Operação binária de ponto flutuante f64.");
+        }
+    };
+
+    Blockly.Blocks['spp_f64_relop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck("f64");
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["= (f64.eq)", "=="],
+                    ["≠ (f64.ne)", "!="],
+                    ["< (f64.lt)", "<"],
+                    ["≤ (f64.le)", "<="],
+                    ["> (f64.gt)", ">"],
+                    ["≥ (f64.ge)", ">="]
+                ]), "OP");
+            this.appendValueInput("RIGHT").setCheck("f64");
+            this.setInputsInline(true);
+            this.setOutput(true, "bool");
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Comparação ponto flutuante f64 -> bool.");
+        }
+    };
+
+    Blockly.Blocks['spp_f64_unop'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ["abs (f64.abs)", "ABS"],
+                    ["neg (-x) (f64.neg)", "NEG"],
+                    ["ceil (f64.ceil)", "CEIL"],
+                    ["floor (f64.floor)", "FLOOR"],
+                    ["trunc (f64.trunc)", "TRUNC"],
+                    ["nearest (f64.nearest)", "NEAREST"],
+                    ["sqrt (f64.sqrt)", "SQRT"]
+                ]), "OP");
+            this.appendValueInput("EXPR").setCheck("f64");
+            this.setInputsInline(true);
+            this.setOutput(true, "f64");
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Operação unária f64.");
+        }
+    };
+
+    // Generic Math Blocks (backward compatible)
     Blockly.Blocks['spp_binary_op'] = {
         init: function() {
             this.appendValueInput("LEFT");
@@ -431,7 +838,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true);
             this.setColour(TYPE_COLORS.math);
-            this.setTooltip("Operação binária do WebAssembly 1.0.");
+            this.setTooltip("Operação binária genérica.");
         }
     };
 
@@ -454,17 +861,193 @@ export function registerScratchPPBlocks(Blockly) {
                 ]), "OP");
             this.setOutput(true);
             this.setColour(TYPE_COLORS.math);
-            this.setTooltip("Operação unária aritmética/bitwise do WebAssembly 1.0.");
+            this.setTooltip("Operação unária genérica.");
         }
     };
 
     // -------------------------------------------------------------------------
-    // 5. CONVERSÕES E REINTERPRETAÇÕES DE BITS
+    // 5. CONVERSÕES EXPLÍCITAS & BITCASTS ESPECÍFICOS
     // -------------------------------------------------------------------------
+    
+    // Type-to-Type Conversions
+    Blockly.Blocks['spp_f32_convert_i32'] = {
+        init: function() {
+            this.appendDummyInput().appendField("f32.convert_i32")
+                .appendField(new Blockly.FieldDropdown([["signed", "signed"], ["unsigned", "unsigned"]]), "SIGNEDNESS");
+            this.appendValueInput("VALUE").setCheck(["i32", "bool"]);
+            this.setInputsInline(true);
+            this.setOutput(true, "f32");
+            this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Converte inteiro i32 em float f32.");
+        }
+    };
+
+    Blockly.Blocks['spp_f64_convert_i32'] = {
+        init: function() {
+            this.appendDummyInput().appendField("f64.convert_i32")
+                .appendField(new Blockly.FieldDropdown([["signed", "signed"], ["unsigned", "unsigned"]]), "SIGNEDNESS");
+            this.appendValueInput("VALUE").setCheck(["i32", "bool"]);
+            this.setInputsInline(true);
+            this.setOutput(true, "f64");
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Converte inteiro i32 em float f64.");
+        }
+    };
+
+    Blockly.Blocks['spp_f64_convert_i64'] = {
+        init: function() {
+            this.appendDummyInput().appendField("f64.convert_i64")
+                .appendField(new Blockly.FieldDropdown([["signed", "signed"], ["unsigned", "unsigned"]]), "SIGNEDNESS");
+            this.appendValueInput("VALUE").setCheck("i64");
+            this.setInputsInline(true);
+            this.setOutput(true, "f64");
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Converte inteiro i64 em float f64.");
+        }
+    };
+
+    Blockly.Blocks['spp_i32_trunc_f32'] = {
+        init: function() {
+            this.appendDummyInput().appendField("i32.trunc_f32")
+                .appendField(new Blockly.FieldDropdown([["signed", "signed"], ["unsigned", "unsigned"]]), "SIGNEDNESS");
+            this.appendValueInput("VALUE").setCheck("f32");
+            this.setInputsInline(true);
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Trunca float f32 para inteiro i32.");
+        }
+    };
+
+    Blockly.Blocks['spp_i32_trunc_f64'] = {
+        init: function() {
+            this.appendDummyInput().appendField("i32.trunc_f64")
+                .appendField(new Blockly.FieldDropdown([["signed", "signed"], ["unsigned", "unsigned"]]), "SIGNEDNESS");
+            this.appendValueInput("VALUE").setCheck("f64");
+            this.setInputsInline(true);
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Trunca float f64 para inteiro i32.");
+        }
+    };
+
+    Blockly.Blocks['spp_i64_trunc_f32'] = {
+        init: function() {
+            this.appendDummyInput().appendField("i64.trunc_f32")
+                .appendField(new Blockly.FieldDropdown([["signed", "signed"], ["unsigned", "unsigned"]]), "SIGNEDNESS");
+            this.appendValueInput("VALUE").setCheck("f32");
+            this.setInputsInline(true);
+            this.setOutput(true, "i64");
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Trunca float f32 para inteiro i64.");
+        }
+    };
+
+    Blockly.Blocks['spp_i64_trunc_f64'] = {
+        init: function() {
+            this.appendDummyInput().appendField("i64.trunc_f64")
+                .appendField(new Blockly.FieldDropdown([["signed", "signed"], ["unsigned", "unsigned"]]), "SIGNEDNESS");
+            this.appendValueInput("VALUE").setCheck("f64");
+            this.setInputsInline(true);
+            this.setOutput(true, "i64");
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Trunca float f64 para inteiro i64.");
+        }
+    };
+
+    Blockly.Blocks['spp_f64_promote_f32'] = {
+        init: function() {
+            this.appendDummyInput().appendField("f64.promote_f32");
+            this.appendValueInput("VALUE").setCheck("f32");
+            this.setInputsInline(true);
+            this.setOutput(true, "f64");
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Promove f32 para f64 com precisão dupla.");
+        }
+    };
+
+    Blockly.Blocks['spp_f32_demote_f64'] = {
+        init: function() {
+            this.appendDummyInput().appendField("f32.demote_f64");
+            this.appendValueInput("VALUE").setCheck("f64");
+            this.setInputsInline(true);
+            this.setOutput(true, "f32");
+            this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Rebaixa f64 para f32.");
+        }
+    };
+
+    Blockly.Blocks['spp_i64_extend_i32'] = {
+        init: function() {
+            this.appendDummyInput().appendField("i64.extend_i32")
+                .appendField(new Blockly.FieldDropdown([["signed", "signed"], ["unsigned", "unsigned"]]), "SIGNEDNESS");
+            this.appendValueInput("VALUE").setCheck(["i32", "bool"]);
+            this.setInputsInline(true);
+            this.setOutput(true, "i64");
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Estende i32 para i64 (64 bits).");
+        }
+    };
+
+    Blockly.Blocks['spp_i32_wrap_i64'] = {
+        init: function() {
+            this.appendDummyInput().appendField("i32.wrap_i64");
+            this.appendValueInput("VALUE").setCheck("i64");
+            this.setInputsInline(true);
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Envolve (wrap) i64 descartando os 32 bits mais altos.");
+        }
+    };
+
+    // Bitcast / Reinterpret Blocks
+    Blockly.Blocks['spp_reinterpret_f32_as_i32'] = {
+        init: function() {
+            this.appendDummyInput().appendField("i32.reinterpret_f32");
+            this.appendValueInput("VALUE").setCheck("f32");
+            this.setInputsInline(true);
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Reinterpreta os 32 bits brutos de um float f32 como i32.");
+        }
+    };
+
+    Blockly.Blocks['spp_reinterpret_i32_as_f32'] = {
+        init: function() {
+            this.appendDummyInput().appendField("f32.reinterpret_i32");
+            this.appendValueInput("VALUE").setCheck(["i32", "bool"]);
+            this.setInputsInline(true);
+            this.setOutput(true, "f32");
+            this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Reinterpreta os 32 bits brutos de um i32 como float f32.");
+        }
+    };
+
+    Blockly.Blocks['spp_reinterpret_f64_as_i64'] = {
+        init: function() {
+            this.appendDummyInput().appendField("i64.reinterpret_f64");
+            this.appendValueInput("VALUE").setCheck("f64");
+            this.setInputsInline(true);
+            this.setOutput(true, "i64");
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Reinterpreta os 64 bits brutos de um float f64 como i64.");
+        }
+    };
+
+    Blockly.Blocks['spp_reinterpret_i64_as_f64'] = {
+        init: function() {
+            this.appendDummyInput().appendField("f64.reinterpret_i64");
+            this.appendValueInput("VALUE").setCheck("i64");
+            this.setInputsInline(true);
+            this.setOutput(true, "f64");
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Reinterpreta os 64 bits brutos de um i64 como float f64.");
+        }
+    };
+
+    // Generic Fallback Convert & Reinterpret
     Blockly.Blocks['spp_convert'] = {
         init: function() {
-            this.appendValueInput("VALUE")
-                .appendField("converter");
+            this.appendValueInput("VALUE").appendField("converter");
             this.appendDummyInput()
                 .appendField("para")
                 .appendField(new Blockly.FieldDropdown([
@@ -482,14 +1065,13 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true);
             this.setColour(TYPE_COLORS.math);
-            this.setTooltip("Conversão explícita de tipos (extend, wrap, convert, demote, promote).");
+            this.setTooltip("Conversão genérica de tipos.");
         }
     };
 
     Blockly.Blocks['spp_reinterpret'] = {
         init: function() {
-            this.appendValueInput("VALUE")
-                .appendField("reinterpretar bits como");
+            this.appendValueInput("VALUE").appendField("reinterpretar bits como");
             this.appendDummyInput()
                 .appendField(new Blockly.FieldDropdown([
                     ["i32 (reinterpret_f32)", "i32"],
@@ -500,13 +1082,172 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true);
             this.setColour(TYPE_COLORS.math);
-            this.setTooltip("Bitcast sem conversão numérica (instruções reinterpret do Wasm).");
+            this.setTooltip("Bitcast genérico.");
         }
     };
 
     // -------------------------------------------------------------------------
-    // 6. MEMÓRIA LINEAR E BUFFERS (100% WASM 1.0)
+    // 6. MEMÓRIA LINEAR (TIPADA & SEGURA)
     // -------------------------------------------------------------------------
+    
+    // Type-specific Memory Loads
+    Blockly.Blocks['spp_i32_load'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("i32.load")
+                .appendField(new Blockly.FieldDropdown([
+                    ["4 bytes (i32)", "i32"],
+                    ["1 byte unsigned (i32.load8_u)", "i32_u8"],
+                    ["1 byte signed (i32.load8_s)", "i32_s8"],
+                    ["2 bytes unsigned (i32.load16_u)", "i32_u16"],
+                    ["2 bytes signed (i32.load16_s)", "i32_s16"]
+                ]), "WIDTH_TYPE")
+                .appendField("offset estático:")
+                .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
+            this.setInputsInline(true);
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Lê inteiro i32 da memória linear.");
+        }
+    };
+
+    Blockly.Blocks['spp_i64_load'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("i64.load")
+                .appendField(new Blockly.FieldDropdown([
+                    ["8 bytes (i64)", "i64"],
+                    ["1 byte u (i64.load8_u)", "i64_u8"],
+                    ["1 byte s (i64.load8_s)", "i64_s8"],
+                    ["2 bytes u (i64.load16_u)", "i64_u16"],
+                    ["2 bytes s (i64.load16_s)", "i64_s16"],
+                    ["4 bytes u (i64.load32_u)", "i64_u32"],
+                    ["4 bytes s (i64.load32_s)", "i64_s32"]
+                ]), "WIDTH_TYPE")
+                .appendField("offset estático:")
+                .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
+            this.setInputsInline(true);
+            this.setOutput(true, "i64");
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Lê inteiro i64 da memória linear.");
+        }
+    };
+
+    Blockly.Blocks['spp_f32_load'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("f32.load (4 bytes)")
+                .appendField("offset estático:")
+                .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
+            this.setInputsInline(true);
+            this.setOutput(true, "f32");
+            this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Lê float f32 da memória linear.");
+        }
+    };
+
+    Blockly.Blocks['spp_f64_load'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("f64.load (8 bytes)")
+                .appendField("offset estático:")
+                .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
+            this.setInputsInline(true);
+            this.setOutput(true, "f64");
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Lê float f64 da memória linear.");
+        }
+    };
+
+    // Type-specific Memory Stores
+    Blockly.Blocks['spp_i32_store'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("i32.store")
+                .appendField(new Blockly.FieldDropdown([
+                    ["4 bytes (i32.store)", "auto"],
+                    ["1 byte (i32.store8)", "u8"],
+                    ["2 bytes (i32.store16)", "u16"]
+                ]), "WIDTH")
+                .appendField("offset estático:")
+                .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.appendValueInput("VALUE").setCheck(["i32", "bool"]).appendField("valor i32:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
+            this.setInputsInline(true);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.i32);
+            this.setTooltip("Escreve i32 na memória linear (rejeita floats!).");
+        }
+    };
+
+    Blockly.Blocks['spp_i64_store'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("i64.store")
+                .appendField(new Blockly.FieldDropdown([
+                    ["8 bytes (i64.store)", "auto"],
+                    ["1 byte (i64.store8)", "u8"],
+                    ["2 bytes (i64.store16)", "u16"],
+                    ["4 bytes (i64.store32)", "u32"]
+                ]), "WIDTH")
+                .appendField("offset estático:")
+                .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.appendValueInput("VALUE").setCheck("i64").appendField("valor i64:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
+            this.setInputsInline(true);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.i64);
+            this.setTooltip("Escreve i64 na memória linear.");
+        }
+    };
+
+    Blockly.Blocks['spp_f32_store'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("f32.store (4 bytes)")
+                .appendField("offset estático:")
+                .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.appendValueInput("VALUE").setCheck("f32").appendField("valor f32:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
+            this.setInputsInline(true);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.f32);
+            this.setTooltip("Escreve float f32 na memória linear (rejeita int!).");
+        }
+    };
+
+    Blockly.Blocks['spp_f64_store'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("f64.store (8 bytes)")
+                .appendField("offset estático:")
+                .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.appendValueInput("VALUE").setCheck("f64").appendField("valor f64:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
+            this.setInputsInline(true);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.f64);
+            this.setTooltip("Escreve float f64 na memória linear (rejeita int!).");
+        }
+    };
+
+    // Generic Memory Load / Store fallback
     Blockly.Blocks['spp_mem_load'] = {
         init: function() {
             this.appendValueInput("BUFFER")
@@ -528,14 +1269,14 @@ export function registerScratchPPBlocks(Blockly) {
                     ["f64 (8 bytes)", "f64"]
                 ]), "WIDTH_TYPE")
                 .appendField("endereço:");
-            this.appendValueInput("OFFSET").appendField("+ offset dinâmico:");
+            this.appendValueInput("OFFSET").appendField("+ offset:");
             this.appendDummyInput()
                 .appendField("offset estático:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
             this.setInputsInline(true);
             this.setOutput(true);
             this.setColour(TYPE_COLORS.memory);
-            this.setTooltip("Instrução load do WebAssembly 1.0 com offset estático.");
+            this.setTooltip("Instrução load genérica.");
         }
     };
 
@@ -559,13 +1300,14 @@ export function registerScratchPPBlocks(Blockly) {
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.memory);
-            this.setTooltip("Instrução store do WebAssembly 1.0.");
+            this.setTooltip("Instrução store genérica.");
         }
     };
 
     Blockly.Blocks['spp_mem_grow'] = {
         init: function() {
             this.appendValueInput("PAGES")
+                .setCheck("i32")
                 .appendField("memory.grow páginas (+64KB cada):");
             this.setOutput(true, "i32");
             this.setColour(TYPE_COLORS.memory);
@@ -578,13 +1320,13 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendDummyInput().appendField("memory.size (páginas atuais)");
             this.setOutput(true, "i32");
             this.setColour(TYPE_COLORS.memory);
-            this.setTooltip("Retorna quantidade atual de páginas de 64KB de memória linear.");
+            this.setTooltip("Retorna quantidade atual de páginas de 64KB.");
         }
     };
 
     Blockly.Blocks['spp_alloc_buffer'] = {
         init: function() {
-            this.appendValueInput("SIZE").appendField("aloque buffer de");
+            this.appendValueInput("SIZE").setCheck("i32").appendField("aloque buffer de");
             this.appendDummyInput().appendField("bytes");
             this.setOutput(true, "buffer");
             this.setColour(TYPE_COLORS.memory);
@@ -611,9 +1353,7 @@ export function registerScratchPPBlocks(Blockly) {
                     ["texto", "texto"],
                     ["buffer", "buffer"]
                 ]), "RETURN_TYPE");
-            this.appendDummyInput()
-                .appendField("params (nome:tipo, ...):")
-                .appendField(new Blockly.FieldTextInput("a:i32, b:i32"), "PARAMS");
+            this.appendStatementInput("PARAMS").setCheck("spp_param").appendField("parâmetros:");
             this.appendStatementInput("BODY").appendField("corpo:");
             this.setColour(TYPE_COLORS.functions);
             this.setTooltip("Declaração de função no módulo WebAssembly.");
@@ -671,6 +1411,7 @@ export function registerScratchPPBlocks(Blockly) {
     Blockly.Blocks['spp_call_indirect'] = {
         init: function() {
             this.appendValueInput("FUNC_INDEX")
+                .setCheck(["função", "i32"])
                 .appendField("call_indirect tabela índice:");
             this.appendDummyInput()
                 .appendField("retorno:")
@@ -706,8 +1447,8 @@ export function registerScratchPPBlocks(Blockly) {
 
     Blockly.Blocks['spp_string_concat'] = {
         init: function() {
-            this.appendValueInput("LEFT").appendField("junte");
-            this.appendValueInput("RIGHT").appendField("com");
+            this.appendValueInput("LEFT").setCheck("texto").appendField("junte");
+            this.appendValueInput("RIGHT").setCheck("texto").appendField("com");
             this.setInputsInline(true);
             this.setOutput(true, "texto");
             this.setColour(TYPE_COLORS.texto);

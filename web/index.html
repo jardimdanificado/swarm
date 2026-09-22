@@ -110,7 +110,7 @@
 
     <!-- Blockly Toolbox XML Definition: 100% WebAssembly 1.0 Instructions -->
     <xml id="toolbox" style="display: none">
-        <category name="Controle Estruturado" colour="#d97706">
+        <category name="Controle & Fluxo" colour="#d97706">
             <block type="spp_start"></block>
             <block type="spp_block"></block>
             <block type="spp_loop"></block>
@@ -131,26 +131,74 @@
             <block type="spp_unreachable"></block>
         </category>
 
-        <category name="Variáveis & Globais" colour="#3b82f6">
-            <block type="spp_declare"></block>
-            <block type="spp_global_declare"></block>
-            <block type="spp_set"></block>
-            <block type="spp_tee"></block>
-            <block type="spp_get"></block>
+        <category name="i32 (Inteiro 32)" colour="#3b82f6">
             <block type="spp_const_i32"></block>
+            <block type="spp_declare_i32"></block>
+            <block type="spp_global_i32"></block>
+            <block type="spp_param_i32"></block>
+            <block type="spp_get_i32"></block>
+            <block type="spp_i32_binop"></block>
+            <block type="spp_i32_relop"></block>
+            <block type="spp_i32_unop"></block>
+            <block type="spp_i32_load"></block>
+            <block type="spp_i32_store"></block>
+        </category>
+
+        <category name="i64 (Inteiro 64)" colour="#1d4ed8">
             <block type="spp_const_i64"></block>
+            <block type="spp_declare_i64"></block>
+            <block type="spp_global_i64"></block>
+            <block type="spp_param_i64"></block>
+            <block type="spp_get_i64"></block>
+            <block type="spp_i64_binop"></block>
+            <block type="spp_i64_relop"></block>
+            <block type="spp_i64_unop"></block>
+            <block type="spp_i64_load"></block>
+            <block type="spp_i64_store"></block>
+        </category>
+
+        <category name="f32 (Real 32)" colour="#10b981">
             <block type="spp_const_f32"></block>
+            <block type="spp_declare_f32"></block>
+            <block type="spp_global_f32"></block>
+            <block type="spp_param_f32"></block>
+            <block type="spp_get_f32"></block>
+            <block type="spp_f32_binop"></block>
+            <block type="spp_f32_relop"></block>
+            <block type="spp_f32_unop"></block>
+            <block type="spp_f32_load"></block>
+            <block type="spp_f32_store"></block>
+        </category>
+
+        <category name="f64 (Real 64)" colour="#047857">
             <block type="spp_const_f64"></block>
-            <block type="spp_const_bool"></block>
-            <block type="spp_const_text"></block>
+            <block type="spp_declare_f64"></block>
+            <block type="spp_global_f64"></block>
+            <block type="spp_param_f64"></block>
+            <block type="spp_get_f64"></block>
+            <block type="spp_f64_binop"></block>
+            <block type="spp_f64_relop"></block>
+            <block type="spp_f64_unop"></block>
+            <block type="spp_f64_load"></block>
+            <block type="spp_f64_store"></block>
         </category>
 
-        <category name="Operações & Matemática" colour="#059669">
-            <block type="spp_binary_op"></block>
-            <block type="spp_unary_op"></block>
-        </category>
-
-        <category name="Conversões & Bitcast" colour="#10b981">
+        <category name="Conversões & Casts" colour="#059669">
+            <block type="spp_f32_convert_i32"></block>
+            <block type="spp_f64_convert_i32"></block>
+            <block type="spp_f64_convert_i64"></block>
+            <block type="spp_i32_trunc_f32"></block>
+            <block type="spp_i32_trunc_f64"></block>
+            <block type="spp_i64_trunc_f32"></block>
+            <block type="spp_i64_trunc_f64"></block>
+            <block type="spp_f64_promote_f32"></block>
+            <block type="spp_f32_demote_f64"></block>
+            <block type="spp_i64_extend_i32"></block>
+            <block type="spp_i32_wrap_i64"></block>
+            <block type="spp_reinterpret_f32_as_i32"></block>
+            <block type="spp_reinterpret_i32_as_f32"></block>
+            <block type="spp_reinterpret_f64_as_i64"></block>
+            <block type="spp_reinterpret_i64_as_f64"></block>
             <block type="spp_convert"></block>
             <block type="spp_reinterpret"></block>
         </category>
@@ -161,19 +209,45 @@
             <block type="spp_mem_grow"></block>
             <block type="spp_mem_size"></block>
             <block type="spp_alloc_buffer"></block>
+            <block type="spp_declare_buffer"></block>
+            <block type="spp_param_buffer"></block>
         </category>
 
-        <category name="Funções & Tabela" colour="#9333ea">
+        <category name="Funções & Módulos" colour="#9333ea">
             <block type="spp_function_def"></block>
+            <block type="spp_param"></block>
+            <block type="spp_param_i32"></block>
+            <block type="spp_param_f32"></block>
+            <block type="spp_param_f64"></block>
+            <block type="spp_param_bool"></block>
+            <block type="spp_param_func"></block>
             <block type="spp_call_stmt"></block>
             <block type="spp_call_expr"></block>
             <block type="spp_function_ptr"></block>
             <block type="spp_call_indirect"></block>
+            <block type="spp_import_func"></block>
+            <block type="spp_import_global"></block>
+            <block type="spp_export_decl"></block>
+            <block type="spp_start_func"></block>
         </category>
 
-        <category name="I/O & Texto" colour="#8b5cf6">
-            <block type="spp_print"></block>
+        <category name="Variáveis & Atribuição" colour="#3b82f6">
+            <block type="spp_set"></block>
+            <block type="spp_tee"></block>
+            <block type="spp_get"></block>
+            <block type="spp_declare"></block>
+            <block type="spp_global_declare"></block>
+        </category>
+
+        <category name="Booleano, Texto & Host" colour="#8b5cf6">
+            <block type="spp_const_bool"></block>
+            <block type="spp_declare_bool"></block>
+            <block type="spp_get_bool"></block>
+            <block type="spp_param_bool"></block>
+            <block type="spp_const_text"></block>
+            <block type="spp_declare_texto"></block>
             <block type="spp_string_concat"></block>
+            <block type="spp_print"></block>
         </category>
     </xml>
 

@@ -70,6 +70,7 @@ async function runDecompilerTests() {
         // Generate Blockly XML
         const xml = transpiler.transpile(decompiledAst);
         assert(xml.includes('<block type="spp_function_def"'), 'Bloco de função gerado no XML');
+        assert(xml.includes('<block type="spp_param"'), 'Bloco visual spp_param gerado para parâmetros');
         assert(xml.includes('<block type="spp_global_declare"'), 'Bloco global gerado no XML');
         console.log('XML Gerado pelo descompilador Wasm:\n', xml.substring(0, 300) + '...\n');
     }

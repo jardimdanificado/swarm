@@ -121,7 +121,12 @@ export const EXAMPLES = [
   <block type="spp_function_def" x="40" y="40">
     <field name="NAME">fatorial</field>
     <field name="RETURN_TYPE">i32</field>
-    <field name="PARAMS">n:i32</field>
+    <statement name="PARAMS">
+      <block type="spp_param">
+        <field name="NAME">n</field>
+        <field name="TYPE">i32</field>
+      </block>
+    </statement>
     <statement name="BODY">
       <block type="spp_declare">
         <field name="TYPE">i32</field>

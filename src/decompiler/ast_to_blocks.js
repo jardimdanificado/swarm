@@ -24,10 +24,14 @@ export class ASTToBlocksTranspiler {
                     xml += `    <field name="NAME">${this.escape(imp.name)}</field>\n`;
                     xml += `    <field name="MODULE">${this.escape(imp.module)}</field>\n`;
                     xml += `    <field name="ALIAS">${this.escape(imp.internalName)}</field>\n`;
-                    xml += `    <field name="PARAMS">${imp.params.map(p => `${p.name}:${p.type}`).join(', ')}</field>\n`;
                     xml += `    <field name="RETURN_TYPE">${imp.returnType || 'void'}</field>\n`;
+                    if (imp.params && imp.params.length > 0) {
+                        xml += `    <statement name="PARAMS">\n`;
+                        xml += this.renderParamChain(imp.params, '      ');
+                        xml += `    </statement>\n`;
+                    }
                     xml += `  </block>\n`;
-                    this.currentY += 120;
+                    this.currentY += 140;
                 } else if (imp.nodeType === ASTNodeType.IMPORT_GLOBAL) {
                     xml += `  <block type="spp_import_global" x="${this.currentX}" y="${this.currentY}">\n`;
                     xml += `    <field name="NAME">${this.escape(imp.name)}</field>\n`;
@@ -74,14 +78,18 @@ export class ASTToBlocksTranspiler {
                 xml += `  <block type="spp_function_def" x="${this.currentX}" y="${this.currentY}">\n`;
                 xml += `    <field name="NAME">${this.escape(func.name)}</field>\n`;
                 xml += `    <field name="RETURN_TYPE">${func.returnType || 'void'}</field>\n`;
-                xml += `    <field name="PARAMS">${func.params.map(p => `${p.name}:${p.type}`).join(', ')}</field>\n`;
+                if (func.params && func.params.length > 0) {
+                    xml += `    <statement name="PARAMS">\n`;
+                    xml += this.renderParamChain(func.params, '      ');
+                    xml += `    </statement>\n`;
+                }
                 if (func.body && func.body.length > 0) {
                     xml += `    <statement name="BODY">\n`;
                     xml += this.renderStatementChain(func.body, '      ');
                     xml += `    </statement>\n`;
                 }
                 xml += `  </block>\n`;
-                this.currentY += 260;
+                this.currentY += 280;
             }
         }
 
@@ -95,6 +103,17 @@ export class ASTToBlocksTranspiler {
         }
 
         xml += '</xml>';
+        return xml;
+    }
+
+    renderParamChain(params, indent = '') {
+        if (!params || params.length === 0) return '';
+        const [first, ...rest] = params;
+        let xml = `${indent}<block type="spp_param">\n${indent}  <field name="NAME">${this.escape(first.name)}</field>\n${indent}  <field name="TYPE">${first.type}</field>\n`;
+        if (rest.length > 0) {
+            xml += `${indent}  <next>\n${this.renderParamChain(rest, indent + '    ')}${indent}  </next>\n`;
+        }
+        xml += `${indent}</block>\n`;
         return xml;
     }
 

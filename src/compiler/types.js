@@ -87,6 +87,8 @@ export function canAutoWiden(from, to) {
     if (from === to) return true;
     if (from === Type.BUFFER && to === Type.I32) return true;
     if (from === Type.I32 && to === Type.BUFFER) return true;
+    if (from === Type.BOOL && to === Type.I32) return true;
+    if (from === Type.I32 && to === Type.BOOL) return true;
     if (from === Type.BOOL) {
         if (to === Type.I32 || to === Type.I64 || to === Type.F32 || to === Type.F64) return true;
     }
