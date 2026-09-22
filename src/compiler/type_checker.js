@@ -1,6 +1,6 @@
 /**
  * Scratch++ Type Checker & Semantic Validator
- * 100% WebAssembly 1.0 Semantic Rules & Coercion
+ * Complete 100% WebAssembly 1.0 Semantic Rules, Imports, Exports & Coercions
  */
 
 import { Type, canAutoWiden, findCommonType } from './types.js';
@@ -44,12 +44,14 @@ export class Scope {
 export class TypeChecker {
     constructor() {
         this.globalScope = new Scope();
-        this.functions = new Map();
+        this.functions = new Map(); // funcName -> { name, params, returnType, index, isImport }
         this.currentFunction = null;
         this.currentScope = this.globalScope;
         this.stringConstants = new Map();
         this.tableFunctions = [];
         this.coercionsApplied = [];
+        this.importedFuncs = [];
+        this.importedGlobals = [];
     }
 
     check(programNode) {
@@ -58,9 +60,56 @@ export class TypeChecker {
         this.stringConstants.clear();
         this.tableFunctions = [];
         this.coercionsApplied = [];
+        this.importedFuncs = [];
+        this.importedGlobals = [];
 
-        // 1. Collect all functions
         let funcIndex = 0;
+
+        // 1. Register Default Host Imports
+        const defaultHostImports = [
+            { module: 'host', name: 'print_i32', internalName: 'host_print_i32', params: [{ name: 'val', type: Type.I32 }], returnType: Type.VOID },
+            { module: 'host', name: 'print_f64', internalName: 'host_print_f64', params: [{ name: 'val', type: Type.F64 }], returnType: Type.VOID },
+            { module: 'host', name: 'print_str', internalName: 'host_print_str', params: [{ name: 'ptr', type: Type.I32 }, { name: 'len', type: Type.I32 }], returnType: Type.VOID }
+        ];
+
+        for (const imp of defaultHostImports) {
+            this.functions.set(imp.internalName, {
+                name: imp.internalName,
+                module: imp.module,
+                exportName: imp.name,
+                params: imp.params,
+                returnType: imp.returnType,
+                index: funcIndex++,
+                isImport: true
+            });
+            this.importedFuncs.push(imp);
+        }
+
+        // 2. Register Custom User Function Imports
+        if (programNode.imports) {
+            for (const imp of programNode.imports) {
+                if (imp.nodeType === ASTNodeType.IMPORT_FUNC) {
+                    if (this.functions.has(imp.internalName)) {
+                        throw new TypeError(`Função importada "${imp.internalName}" já existe.`, imp);
+                    }
+                    this.functions.set(imp.internalName, {
+                        name: imp.internalName,
+                        module: imp.module,
+                        exportName: imp.name,
+                        params: imp.params,
+                        returnType: imp.returnType,
+                        index: funcIndex++,
+                        isImport: true
+                    });
+                    this.importedFuncs.push(imp);
+                } else if (imp.nodeType === ASTNodeType.IMPORT_GLOBAL) {
+                    this.globalScope.define(imp.internalName, imp.type, true, false, imp.mutable);
+                    this.importedGlobals.push(imp);
+                }
+            }
+        }
+
+        // 3. Register Defined Functions
         for (const func of programNode.functions) {
             if (this.functions.has(func.name)) {
                 throw new TypeError(`Função "${func.name}" já declarada.`, func);
@@ -70,22 +119,23 @@ export class TypeChecker {
                 params: func.params,
                 returnType: func.returnType,
                 index: funcIndex++,
+                isImport: false,
                 node: func
             });
             this.tableFunctions.push(func.name);
         }
 
-        // 2. Check globals
+        // 4. Check Globals
         for (const globalDecl of programNode.globals) {
             this.checkGlobalDeclaration(globalDecl);
         }
 
-        // 3. Check functions bodies
+        // 5. Check Function Bodies
         for (const func of programNode.functions) {
             this.checkFunction(func);
         }
 
-        // 4. Check main body (if any)
+        // 6. Check Main/Start Body (if any)
         if (programNode.mainBody && programNode.mainBody.length > 0) {
             this.currentScope = new Scope(this.globalScope);
             this.currentFunction = {
@@ -98,11 +148,25 @@ export class TypeChecker {
             }
         }
 
+        // 7. Validate Start Function (if specified)
+        if (programNode.startFunc) {
+            const startName = typeof programNode.startFunc === 'string' ? programNode.startFunc : programNode.startFunc.funcName;
+            const startFn = this.functions.get(startName);
+            if (!startFn) {
+                throw new TypeError(`Função de start "${startName}" não encontrada.`);
+            }
+            if (startFn.params.length > 0 || (startFn.returnType !== Type.VOID && startFn.returnType !== null)) {
+                throw new TypeError(`Função de start "${startName}" deve ter assinatura () -> void.`);
+            }
+        }
+
         return {
             functions: this.functions,
             stringConstants: this.stringConstants,
             tableFunctions: this.tableFunctions,
-            coercions: this.coercionsApplied
+            coercions: this.coercionsApplied,
+            importedFuncs: this.importedFuncs,
+            importedGlobals: this.importedGlobals
         };
     }
 
@@ -165,6 +229,9 @@ export class TypeChecker {
                 const sym = this.currentScope.lookup(node.name);
                 if (!sym) {
                     throw new TypeError(`Variável não declarada: "${node.name}".`, node);
+                }
+                if (sym.isGlobal && !sym.mutable) {
+                    throw new TypeError(`Não é permitido modificar global imutável "${node.name}".`, node);
                 }
                 node.valueExpr = this.checkNode(node.valueExpr);
                 node.valueExpr = this.coerce(node.valueExpr, sym.type, `atribuição a "${node.name}"`);
@@ -272,8 +339,6 @@ export class TypeChecker {
                 } else if (node.op === 'NOT') {
                     node.expr = this.coerce(node.expr, Type.BOOL, 'operador NOT');
                     node.inferredType = Type.BOOL;
-                } else if (['CLZ', 'CTZ', 'POPCNT'].includes(node.op)) {
-                    node.inferredType = node.expr.inferredType;
                 } else {
                     node.inferredType = node.expr.inferredType;
                 }
@@ -350,7 +415,7 @@ export class TypeChecker {
             case ASTNodeType.CALL: {
                 const func = this.functions.get(node.funcName);
                 if (!func) {
-                    throw new TypeError(`Função "${node.funcName}" não declarada.`, node);
+                    throw new TypeError(`Função "${node.funcName}" não declarada ou importada.`, node);
                 }
                 if (node.args.length !== func.params.length) {
                     throw new TypeError(

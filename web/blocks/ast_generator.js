@@ -1,11 +1,15 @@
 /**
  * Scratch++ AST Generator for Blockly
- * 100% Coverage of WebAssembly 1.0 AST Generation
+ * 100% Coverage of WebAssembly 1.0 AST Generation (Imports, Exports, Start, Tables, Control, Memory)
  */
 
 import { Type } from '../../src/compiler/types.js';
 import {
     ProgramNode,
+    ImportFuncNode,
+    ImportGlobalNode,
+    ExportNode,
+    StartFuncNode,
     FunctionNode,
     GlobalDeclareNode,
     DeclareVarNode,
@@ -51,6 +55,9 @@ export class ASTGenerator {
         const topBlocks = this.workspace.getTopBlocks(true);
         const functions = [];
         const globals = [];
+        const imports = [];
+        const exports = [];
+        let startFunc = null;
         let mainBody = [];
 
         for (const block of topBlocks) {
@@ -59,6 +66,17 @@ export class ASTGenerator {
                 if (firstChild) {
                     mainBody = mainBody.concat(this.parseStatementList(firstChild));
                 }
+            } else if (block.type === 'spp_import_func') {
+                const imp = this.parseImportFunc(block);
+                if (imp) imports.push(imp);
+            } else if (block.type === 'spp_import_global') {
+                const impG = this.parseImportGlobal(block);
+                if (impG) imports.push(impG);
+            } else if (block.type === 'spp_export_decl') {
+                const exp = this.parseExport(block);
+                if (exp) exports.push(exp);
+            } else if (block.type === 'spp_start_func') {
+                startFunc = block.getFieldValue('FUNC_NAME');
             } else if (block.type === 'spp_function_def') {
                 const funcNode = this.parseFunctionDef(block);
                 if (funcNode) functions.push(funcNode);
@@ -71,7 +89,43 @@ export class ASTGenerator {
             }
         }
 
-        return new ProgramNode(functions, globals, mainBody);
+        return new ProgramNode(functions, globals, mainBody, imports, exports, startFunc);
+    }
+
+    parseImportFunc(block) {
+        const name = block.getFieldValue('NAME') || 'func';
+        const module = block.getFieldValue('MODULE') || 'env';
+        const alias = block.getFieldValue('ALIAS') || name;
+        const returnType = block.getFieldValue('RETURN_TYPE') || Type.VOID;
+        const paramsRaw = block.getFieldValue('PARAMS') || '';
+
+        const params = [];
+        if (paramsRaw.trim()) {
+            const parts = paramsRaw.split(',');
+            for (const part of parts) {
+                const [pName, pType] = part.split(':').map(s => s.trim());
+                if (pName && pType) {
+                    params.push({ name: pName, type: pType });
+                }
+            }
+        }
+        return new ImportFuncNode(module, name, alias, params, returnType);
+    }
+
+    parseImportGlobal(block) {
+        const name = block.getFieldValue('NAME') || 'g';
+        const module = block.getFieldValue('MODULE') || 'env';
+        const alias = block.getFieldValue('ALIAS') || name;
+        const type = block.getFieldValue('TYPE') || Type.I32;
+        const mutable = block.getFieldValue('MUTABLE') === 'mut';
+        return new ImportGlobalNode(module, name, alias, type, mutable);
+    }
+
+    parseExport(block) {
+        const kind = block.getFieldValue('KIND') || 'func';
+        const internalName = block.getFieldValue('INTERNAL_NAME') || '';
+        const exportName = block.getFieldValue('EXPORT_NAME') || internalName;
+        return new ExportNode(kind, internalName, exportName);
     }
 
     parseFunctionDef(block) {
@@ -238,7 +292,7 @@ export class ASTGenerator {
             case 'spp_call_stmt': {
                 const name = block.getFieldValue('NAME');
                 const args = [];
-                for (let i = 0; i < 3; i++) {
+                for (let i = 0; i < 6; i++) {
                     const argBlock = block.getInputTargetBlock(`ARG${i}`);
                     if (argBlock) args.push(this.parseExpression(argBlock));
                 }
@@ -386,7 +440,7 @@ export class ASTGenerator {
             case 'spp_call_expr': {
                 const name = block.getFieldValue('NAME');
                 const args = [];
-                for (let i = 0; i < 3; i++) {
+                for (let i = 0; i < 6; i++) {
                     const argBlock = block.getInputTargetBlock(`ARG${i}`);
                     if (argBlock) args.push(this.parseExpression(argBlock));
                 }

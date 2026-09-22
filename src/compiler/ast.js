@@ -1,17 +1,22 @@
 /**
- * Scratch++ AST (Abstract Syntax Tree) Node Definitions - 100% WebAssembly 1.0 Coverage
+ * Scratch++ AST (Abstract Syntax Tree) Node Definitions
+ * Complete 100% WebAssembly 1.0 (MVP) Specification
  */
 
 export const ASTNodeType = {
     PROGRAM: 'Program',
+    IMPORT_FUNC: 'ImportFunc',
+    IMPORT_GLOBAL: 'ImportGlobal',
+    IMPORT_MEMORY: 'ImportMemory',
+    IMPORT_TABLE: 'ImportTable',
+    EXPORT: 'Export',
+    START_FUNC: 'StartFunc',
     FUNCTION: 'Function',
     GLOBAL_DECLARE: 'GlobalDeclare',
     DECLARE_VAR: 'DeclareVar',
     SET_VAR: 'SetVar',
     TEE_VAR: 'TeeVar',
     GET_VAR: 'GetVar',
-    GLOBAL_SET: 'GlobalSet',
-    GLOBAL_GET: 'GlobalGet',
     CONST: 'Const',
     BINARY_OP: 'BinaryOp',
     UNARY_OP: 'UnaryOp',
@@ -51,32 +56,96 @@ export class ASTNode {
 }
 
 export class ProgramNode extends ASTNode {
-    constructor(functions = [], globals = [], mainBody = []) {
+    constructor(functions = [], globals = [], mainBody = [], imports = [], exports = [], startFunc = null) {
         super(ASTNodeType.PROGRAM);
         this.functions = functions;
         this.globals = globals;
         this.mainBody = mainBody;
+        this.imports = imports;
+        this.exports = exports;
+        this.startFunc = startFunc;
+    }
+}
+
+export class ImportFuncNode extends ASTNode {
+    constructor(module, name, internalName, params = [], returnType = 'void') {
+        super(ASTNodeType.IMPORT_FUNC);
+        this.module = module;
+        this.name = name;
+        this.internalName = internalName;
+        this.params = params; // [{name: string, type: string}]
+        this.returnType = returnType;
+    }
+}
+
+export class ImportGlobalNode extends ASTNode {
+    constructor(module, name, internalName, type, mutable = false) {
+        super(ASTNodeType.IMPORT_GLOBAL);
+        this.module = module;
+        this.name = name;
+        this.internalName = internalName;
+        this.type = type;
+        this.mutable = mutable;
+    }
+}
+
+export class ImportMemoryNode extends ASTNode {
+    constructor(module, name, min = 1, max = null) {
+        super(ASTNodeType.IMPORT_MEMORY);
+        this.module = module;
+        this.name = name;
+        this.min = min;
+        this.max = max;
+    }
+}
+
+export class ImportTableNode extends ASTNode {
+    constructor(module, name, min = 1, max = null) {
+        super(ASTNodeType.IMPORT_TABLE);
+        this.module = module;
+        this.name = name;
+        this.min = min;
+        this.max = max;
+    }
+}
+
+export class ExportNode extends ASTNode {
+    constructor(kind, internalName, exportName) {
+        super(ASTNodeType.EXPORT);
+        this.kind = kind; // 'func' | 'global' | 'mem' | 'table'
+        this.internalName = internalName;
+        this.exportName = exportName;
+    }
+}
+
+export class StartFuncNode extends ASTNode {
+    constructor(funcName) {
+        super(ASTNodeType.START_FUNC);
+        this.funcName = funcName;
     }
 }
 
 export class FunctionNode extends ASTNode {
-    constructor(name, params = [], returnType = 'void', body = [], isExported = true) {
+    constructor(name, params = [], returnType = 'void', body = [], isExported = true, exportName = null) {
         super(ASTNodeType.FUNCTION);
         this.name = name;
         this.params = params; // [{name: string, type: string}]
         this.returnType = returnType;
         this.body = body;
         this.isExported = isExported;
+        this.exportName = exportName || name;
     }
 }
 
 export class GlobalDeclareNode extends ASTNode {
-    constructor(name, type, mutable = true, initExpr = null) {
+    constructor(name, type, mutable = true, initExpr = null, isExported = false, exportName = null) {
         super(ASTNodeType.GLOBAL_DECLARE);
         this.name = name;
         this.type = type;
         this.mutable = mutable;
         this.initExpr = initExpr;
+        this.isExported = isExported;
+        this.exportName = exportName || name;
     }
 }
 
@@ -128,7 +197,7 @@ export class BinaryOpNode extends ASTNode {
         this.op = op;
         this.left = left;
         this.right = right;
-        this.signedness = signedness; // 'signed' | 'unsigned'
+        this.signedness = signedness;
     }
 }
 

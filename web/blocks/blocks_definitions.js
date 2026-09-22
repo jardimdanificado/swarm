@@ -1,13 +1,96 @@
 /**
  * Scratch++ Blockly Block Definitions
- * 100% WebAssembly 1.0 Instruction Coverage (scratchpp-spec.md)
+ * 100% WebAssembly 1.0 Instruction Coverage with Imports, Exports, Start & Tables
  */
 
 import { TYPE_COLORS } from './types_theme.js';
 
 export function registerScratchPPBlocks(Blockly) {
     // -------------------------------------------------------------------------
-    // 1. CONTROLE ESTRUTURADO (WASM 1.0)
+    // 1. IMPORTS & EXPORTS & START (WASM 1.0)
+    // -------------------------------------------------------------------------
+    Blockly.Blocks['spp_import_func'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("📥 importar func")
+                .appendField(new Blockly.FieldTextInput("sin"), "NAME")
+                .appendField("de [")
+                .appendField(new Blockly.FieldTextInput("env"), "MODULE")
+                .appendField("] como:")
+                .appendField(new Blockly.FieldTextInput("math_sin"), "ALIAS");
+            this.appendDummyInput()
+                .appendField("params (nome:tipo):")
+                .appendField(new Blockly.FieldTextInput("x:f64"), "PARAMS")
+                .appendField("retorno:")
+                .appendField(new Blockly.FieldDropdown([
+                    ["void", "void"],
+                    ["i32", "i32"],
+                    ["i64", "i64"],
+                    ["f32", "f32"],
+                    ["f64", "f64"]
+                ]), "RETURN_TYPE");
+            this.setColour('#6366f1');
+            this.setTooltip("Importa uma função externa de outro módulo Wasm ou do Host.");
+        }
+    };
+
+    Blockly.Blocks['spp_import_global'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("📥 importar global")
+                .appendField(new Blockly.FieldTextInput("MY_CONST"), "NAME")
+                .appendField("de [")
+                .appendField(new Blockly.FieldTextInput("env"), "MODULE")
+                .appendField("] como:")
+                .appendField(new Blockly.FieldTextInput("ext_const"), "ALIAS");
+            this.appendDummyInput()
+                .appendField("tipo:")
+                .appendField(new Blockly.FieldDropdown([
+                    ["i32", "i32"],
+                    ["i64", "i64"],
+                    ["f32", "f32"],
+                    ["f64", "f64"]
+                ]), "TYPE")
+                .appendField(new Blockly.FieldDropdown([
+                    ["imutável (const)", "const"],
+                    ["mutável", "mut"]
+                ]), "MUTABLE");
+            this.setColour('#6366f1');
+            this.setTooltip("Importa uma variável global do host/módulo externo.");
+        }
+    };
+
+    Blockly.Blocks['spp_export_decl'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("📤 exportar")
+                .appendField(new Blockly.FieldDropdown([
+                    ["função", "func"],
+                    ["global", "global"],
+                    ["memória (memory)", "mem"],
+                    ["tabela (table)", "table"]
+                ]), "KIND")
+                .appendField("[")
+                .appendField(new Blockly.FieldTextInput("minhaFuncao"), "INTERNAL_NAME")
+                .appendField("] como:")
+                .appendField(new Blockly.FieldTextInput("exportedName"), "EXPORT_NAME");
+            this.setColour('#8b5cf6');
+            this.setTooltip("Exporta elemento do módulo Wasm para o host.");
+        }
+    };
+
+    Blockly.Blocks['spp_start_func'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("⚡ start function:")
+                .appendField(new Blockly.FieldTextInput("minhaFuncao"), "FUNC_NAME");
+            this.setColour('#ec4899');
+            this.setTooltip("Define a start function (0x08) executada automaticamente na instanciação.");
+        }
+    };
+
+    // -------------------------------------------------------------------------
+    // 2. CONTROLE ESTRUTURADO (WASM 1.0)
     // -------------------------------------------------------------------------
     Blockly.Blocks['spp_start'] = {
         init: function() {
@@ -172,7 +255,7 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 2. VARIÁVEIS, GLOBAIS E LITERAIS
+    // 3. VARIÁVEIS, GLOBAIS E LITERAIS
     // -------------------------------------------------------------------------
     Blockly.Blocks['spp_declare'] = {
         init: function() {
@@ -311,7 +394,7 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 3. OPERAÇÕES NUMÉRICAS & BITWISE (100% WASM 1.0)
+    // 4. OPERAÇÕES NUMÉRICAS & BITWISE (100% WASM 1.0)
     // -------------------------------------------------------------------------
     Blockly.Blocks['spp_binary_op'] = {
         init: function() {
@@ -376,7 +459,7 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 4. CONVERSÕES E REINTERPRETAÇÕES DE BITS
+    // 5. CONVERSÕES E REINTERPRETAÇÕES DE BITS
     // -------------------------------------------------------------------------
     Blockly.Blocks['spp_convert'] = {
         init: function() {
@@ -422,7 +505,7 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 5. MEMÓRIA LINEAR E BUFFERS (100% WASM 1.0)
+    // 6. MEMÓRIA LINEAR E BUFFERS (100% WASM 1.0)
     // -------------------------------------------------------------------------
     Blockly.Blocks['spp_mem_load'] = {
         init: function() {
@@ -510,7 +593,7 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 6. FUNÇÕES E TABELA (CALL / CALL_INDIRECT)
+    // 7. FUNÇÕES E TABELA (CALL / CALL_INDIRECT)
     // -------------------------------------------------------------------------
     Blockly.Blocks['spp_function_def'] = {
         init: function() {
@@ -545,6 +628,9 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendValueInput("ARG0").appendField("arg 1:").setAlign(Blockly.ALIGN_RIGHT);
             this.appendValueInput("ARG1").appendField("arg 2:").setAlign(Blockly.ALIGN_RIGHT);
             this.appendValueInput("ARG2").appendField("arg 3:").setAlign(Blockly.ALIGN_RIGHT);
+            this.appendValueInput("ARG3").appendField("arg 4:").setAlign(Blockly.ALIGN_RIGHT);
+            this.appendValueInput("ARG4").appendField("arg 5:").setAlign(Blockly.ALIGN_RIGHT);
+            this.appendValueInput("ARG5").appendField("arg 6:").setAlign(Blockly.ALIGN_RIGHT);
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.functions);
@@ -560,6 +646,9 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendValueInput("ARG0").appendField("(");
             this.appendValueInput("ARG1").appendField(",");
             this.appendValueInput("ARG2").appendField(",");
+            this.appendValueInput("ARG3").appendField(",");
+            this.appendValueInput("ARG4").appendField(",");
+            this.appendValueInput("ARG5").appendField(",");
             this.appendDummyInput().appendField(")");
             this.setInputsInline(true);
             this.setOutput(true);
@@ -603,7 +692,7 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 7. HOST I/O & TEXTO
+    // 8. HOST I/O & TEXTO
     // -------------------------------------------------------------------------
     Blockly.Blocks['spp_print'] = {
         init: function() {

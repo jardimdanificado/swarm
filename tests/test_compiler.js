@@ -1,6 +1,6 @@
 /**
  * Automated Compiler & Runtime Test Suite
- * 100% WebAssembly 1.0 Coverage Verification
+ * 100% WebAssembly 1.0 Coverage Verification (Including Generic Imports, Exports, Start Section & Bitcast)
  */
 
 import { Compiler } from '../src/compiler/compiler.js';
@@ -8,6 +8,10 @@ import { ScratchRuntime } from '../src/runtime/runtime.js';
 import { Type } from '../src/compiler/types.js';
 import {
     ProgramNode,
+    ImportFuncNode,
+    ImportGlobalNode,
+    ExportNode,
+    StartFuncNode,
     FunctionNode,
     GlobalDeclareNode,
     DeclareVarNode,
@@ -55,14 +59,14 @@ function assert(condition, message) {
 }
 
 async function runTests() {
-    console.log('--- Suíte de Testes Scratch++ (100% WebAssembly 1.0) ---');
+    console.log('--- Suíte de Testes Scratch++ (100% WebAssembly 1.0 Completo) ---');
     const compiler = new Compiler();
-    const runtime = new ScratchRuntime();
 
     // -------------------------------------------------------------
     // Test 1: Simple Addition Function
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcAdd = new FunctionNode(
             'add',
             [{ name: 'a', type: Type.I32 }, { name: 'b', type: Type.I32 }],
@@ -84,6 +88,7 @@ async function runTests() {
     // Test 2: Factorial with While Loop
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcFact = new FunctionNode(
             'factorial',
             [{ name: 'n', type: Type.I32 }],
@@ -117,6 +122,7 @@ async function runTests() {
     // Test 3: Type Widening Coercion (i32 + f64 -> f64)
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcWiden = new FunctionNode(
             'calc_widen',
             [{ name: 'intVal', type: Type.I32 }, { name: 'floatVal', type: Type.F64 }],
@@ -139,6 +145,7 @@ async function runTests() {
     // Test 4: Memory Buffer Load and Store (Load8 / Store8)
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcMem = new FunctionNode(
             'test_memory',
             [],
@@ -166,6 +173,7 @@ async function runTests() {
     // Test 5: String Constants and Print Host Calls
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcPrint = new FunctionNode(
             'test_print',
             [],
@@ -187,6 +195,7 @@ async function runTests() {
     // Test 6: Table First-Class Indirect Call (call_indirect)
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcDouble = new FunctionNode(
             'double_val',
             [{ name: 'x', type: Type.I32 }],
@@ -221,6 +230,7 @@ async function runTests() {
     // Test 7: Wasm 1.0 Select & Local.Tee
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcSelect = new FunctionNode(
             'test_select_tee',
             [{ name: 'cond', type: Type.BOOL }],
@@ -249,12 +259,12 @@ async function runTests() {
     // Test 8: Wasm 1.0 Bitcast (Reinterpretation)
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcReinterpret = new FunctionNode(
             'test_bitcast',
             [],
             Type.I32,
             [
-                // float 1.0 in IEEE 754 is 0x3F800000 = 1065353216
                 new ReturnNode(
                     new ReinterpretNode(new ConstNode(1.0, Type.F32), Type.I32)
                 )
@@ -271,6 +281,7 @@ async function runTests() {
     // Test 9: Wasm 1.0 Integer Bitwise Count (clz, ctz, popcnt)
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcBitCounts = new FunctionNode(
             'test_bit_counts',
             [{ name: 'val', type: Type.I32 }],
@@ -292,7 +303,6 @@ async function runTests() {
         const program = new ProgramNode([funcBitCounts], [], []);
         const { wasmBytes } = compiler.compile(program);
         await runtime.instantiate(wasmBytes);
-        // For val = 8 (0b1000): clz=28, ctz=3, popcnt=1 -> 28 + 3 + 1 = 32
         const { result } = runtime.run('test_bit_counts', 8);
         assert(result === 32, `clz(8) + ctz(8) + popcnt(8) == 32 (recebido: ${result})`);
     }
@@ -301,6 +311,7 @@ async function runTests() {
     // Test 10: Memory.Grow and Memory.Size
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcMemGrow = new FunctionNode(
             'test_mem_grow',
             [],
@@ -316,7 +327,6 @@ async function runTests() {
         const { wasmBytes } = compiler.compile(program);
         await runtime.instantiate(wasmBytes);
         const { result } = runtime.run('test_mem_grow');
-        // Initial was 2 pages, grew by 3 pages -> total 5 pages
         assert(result === 5, `memory.size after memory.grow(3) == 5 (recebido: ${result})`);
     }
 
@@ -324,6 +334,7 @@ async function runTests() {
     // Test 11: Globals (mutable)
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const globalG = new GlobalDeclareNode('counter', Type.I32, true, new ConstNode(10, Type.I32));
         const funcInc = new FunctionNode(
             'inc_global',
@@ -347,6 +358,7 @@ async function runTests() {
     // Test 12: Wasm 1.0 br_table (Switch Dispatch)
     // -------------------------------------------------------------
     {
+        const runtime = new ScratchRuntime();
         const funcDispatch = new FunctionNode(
             'test_br_table',
             [{ name: 'idx', type: Type.I32 }],
@@ -378,7 +390,105 @@ async function runTests() {
         assert(rDef.result === 999, `br_table default == 999 (recebido: ${rDef.result})`);
     }
 
-    console.log(`\n🎉 Todos os ${passedTests}/${totalTests} testes de conformidade Wasm 1.0 passaram com 100% de sucesso!`);
+    // -------------------------------------------------------------
+    // Test 13: Generic Custom Function Import
+    // -------------------------------------------------------------
+    {
+        const customImport = new ImportFuncNode('env', 'custom_mul', 'my_mul', [
+            { name: 'x', type: Type.I32 },
+            { name: 'y', type: Type.I32 }
+        ], Type.I32);
+
+        const funcCallImport = new FunctionNode(
+            'call_my_mul',
+            [{ name: 'a', type: Type.I32 }, { name: 'b', type: Type.I32 }],
+            Type.I32,
+            [
+                new ReturnNode(new CallNode('my_mul', [new GetVarNode('a'), new GetVarNode('b')]))
+            ]
+        );
+
+        const program = new ProgramNode([funcCallImport], [], [], [customImport]);
+        const { wasmBytes } = compiler.compile(program);
+
+        // Instantiate with custom host function
+        const imports = {
+            host: {
+                print_i32: () => {},
+                print_f64: () => {},
+                print_str: () => {}
+            },
+            env: {
+                custom_mul: (x, y) => x * y * 10
+            }
+        };
+
+        const compiled = await WebAssembly.instantiate(wasmBytes, imports);
+        const result = compiled.instance.exports.call_my_mul(3, 4);
+        assert(result === 120, `custom import env.custom_mul(3, 4) == 120 (recebido: ${result})`);
+    }
+
+    // -------------------------------------------------------------
+    // Test 14: Start Section (Section 0x08)
+    // -------------------------------------------------------------
+    {
+        const globalInit = new GlobalDeclareNode('start_marker', Type.I32, true, new ConstNode(0, Type.I32), true);
+        const funcStart = new FunctionNode(
+            'init_module',
+            [],
+            Type.VOID,
+            [
+                new SetVarNode('start_marker', new ConstNode(777, Type.I32))
+            ]
+        );
+        const funcGetMarker = new FunctionNode(
+            'get_marker',
+            [],
+            Type.I32,
+            [
+                new ReturnNode(new GetVarNode('start_marker'))
+            ]
+        );
+
+        const program = new ProgramNode([funcStart, funcGetMarker], [globalInit], [], [], [], 'init_module');
+        const { wasmBytes } = compiler.compile(program);
+
+        const imports = {
+            host: { print_i32: () => {}, print_f64: () => {}, print_str: () => {} }
+        };
+        const compiled = await WebAssembly.instantiate(wasmBytes, imports);
+        // Start function was executed automatically during instantiate
+        const result = compiled.instance.exports.get_marker();
+        assert(result === 777, `Start Section (0x08) executou automaticamente marcando valor 777 (recebido: ${result})`);
+    }
+
+    // -------------------------------------------------------------
+    // Test 15: Custom Export Names
+    // -------------------------------------------------------------
+    {
+        const funcInternal = new FunctionNode(
+            'internal_calc',
+            [{ name: 'x', type: Type.I32 }],
+            Type.I32,
+            [
+                new ReturnNode(new BinaryOpNode('+', new GetVarNode('x'), new ConstNode(1, Type.I32)))
+            ],
+            true,
+            'external_calc_api'
+        );
+
+        const program = new ProgramNode([funcInternal], [], []);
+        const { wasmBytes } = compiler.compile(program);
+        const imports = {
+            host: { print_i32: () => {}, print_f64: () => {}, print_str: () => {} }
+        };
+        const compiled = await WebAssembly.instantiate(wasmBytes, imports);
+        assert(typeof compiled.instance.exports.external_calc_api === 'function', 'Função exportada com nome customizado "external_calc_api"');
+        const res = compiled.instance.exports.external_calc_api(99);
+        assert(res === 100, `external_calc_api(99) == 100 (recebido: ${res})`);
+    }
+
+    console.log(`\n🎉 Todos os ${passedTests}/${totalTests} testes de conformidade 100% Wasm 1.0 passaram com sucesso!`);
 }
 
 runTests().catch(err => {

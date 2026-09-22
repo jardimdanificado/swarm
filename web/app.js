@@ -8,6 +8,9 @@ import { initScratchTheme } from './blocks/types_theme.js';
 import { ASTGenerator } from './blocks/ast_generator.js';
 import { Compiler } from '../src/compiler/compiler.js';
 import { ScratchRuntime } from '../src/runtime/runtime.js';
+import { WasmDecoder } from '../src/decompiler/wasm_decoder.js';
+import { WatParser } from '../src/decompiler/wat_parser.js';
+import { ASTToBlocksTranspiler } from '../src/decompiler/ast_to_blocks.js';
 import { EXAMPLES } from './examples.js';
 
 let workspace = null;
@@ -84,7 +87,7 @@ function formatHexDump(uint8Array) {
 /* =========================================================================
  * Compilation Pipeline
  * ========================================================================= */
-function compileWorkspace() {
+function compileWorkspace(silent = false) {
     try {
         const astGen = new ASTGenerator(workspace);
         const programAst = astGen.generate();
@@ -117,11 +120,13 @@ function compileWorkspace() {
 
         return compileResult;
     } catch (err) {
-        console.error('Erro na compilação:', err);
-        appendConsole(`[Erro de Compilação] ${err.message}`, 'error');
-        showToast(err.message, 'error');
+        if (!silent) {
+            console.error('Erro na compilação:', err);
+            appendConsole(`[Erro de Compilação] ${err.message}`, 'error');
+            showToast(err.message, 'error');
+        }
         const statusLeft = document.getElementById('status-left');
-        if (statusLeft) statusLeft.textContent = `❌ Erro: ${err.message}`;
+        if (statusLeft) statusLeft.textContent = `⚠️ Compilação: ${err.message}`;
         return null;
     }
 }
@@ -247,6 +252,7 @@ window.addEventListener('DOMContentLoaded', () => {
         grid: { spacing: 25, length: 3, colour: '#1c2823', snap: true },
         zoom: { controls: true, wheel: true, startScale: 0.9, maxScale: 2.0, minScale: 0.4, scaleSpeed: 1.1 },
         trashcan: true,
+        sounds: false,
         theme: theme
     });
 
@@ -313,6 +319,59 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const btnDecompileWasm = document.getElementById('btn-decompile-wasm');
+    const fileInputWasm = document.getElementById('file-input-wasm');
+    const wasmDecoder = new WasmDecoder();
+    const watParser = new WatParser();
+    const astToBlocks = new ASTToBlocksTranspiler();
+
+    if (btnDecompileWasm && fileInputWasm) {
+        btnDecompileWasm.addEventListener('click', () => fileInputWasm.click());
+        fileInputWasm.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const isWat = file.name.endsWith('.wat') || file.name.endsWith('.wast');
+            const reader = new FileReader();
+
+            if (isWat) {
+                reader.onload = (evt) => {
+                    try {
+                        const watText = evt.target.result;
+                        const ast = watParser.parse(watText);
+                        const xmlText = astToBlocks.transpile(ast);
+                        workspace.clear();
+                        const dom = parseXmlText(xmlText);
+                        Blockly.Xml.domToWorkspace(dom, workspace);
+                        showToast(`WAT "${file.name}" descompilado com sucesso!`, 'success');
+                        compileWorkspace();
+                    } catch (err) {
+                        console.error('Erro ao descompilar WAT:', err);
+                        showToast(`Erro ao descompilar WAT: ${err.message}`, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            } else {
+                reader.onload = (evt) => {
+                    try {
+                        const buffer = new Uint8Array(evt.target.result);
+                        const ast = wasmDecoder.decode(buffer);
+                        const xmlText = astToBlocks.transpile(ast);
+                        workspace.clear();
+                        const dom = parseXmlText(xmlText);
+                        Blockly.Xml.domToWorkspace(dom, workspace);
+                        showToast(`Binário .wasm "${file.name}" descompilado com sucesso!`, 'success');
+                        compileWorkspace();
+                    } catch (err) {
+                        console.error('Erro ao descompilar .wasm:', err);
+                        showToast(`Erro ao descompilar .wasm: ${err.message}`, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+    }
+
     const btnClear = document.getElementById('btn-clear');
     if (btnClear) btnClear.addEventListener('click', () => {
         workspace.clear();
@@ -345,9 +404,13 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Auto-recompile on workspace block change
+    // Auto-recompile on workspace block change (debounced & silent)
+    let autoCompileTimer = null;
     workspace.addChangeListener((e) => {
         if (e.isUiEvent || (workspace.isDragging && workspace.isDragging())) return;
-        compileWorkspace();
+        if (autoCompileTimer) clearTimeout(autoCompileTimer);
+        autoCompileTimer = setTimeout(() => {
+            compileWorkspace(true);
+        }, 250);
     });
 });

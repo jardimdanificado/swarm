@@ -1,6 +1,6 @@
 /**
  * Scratch++ Intermediate Representation (IR)
- * Complete 100% WebAssembly 1.0 Instruction Set
+ * 100% WebAssembly 1.0 (MVP) - Full Import/Export/Start/Table/Memory Spec
  */
 
 import { Type, TYPE_METADATA } from './types.js';
@@ -114,9 +114,9 @@ export const IROp = {
 export class IRNode {
     constructor(op, type = null, args = [], imm = null) {
         this.op = op;
-        this.type = type; // wasm type: 'i32', 'i64', 'f32', 'f64', or null
-        this.args = args; // Children IRNode[]
-        this.imm = imm;   // Immediate values
+        this.type = type;
+        this.args = args;
+        this.imm = imm;
     }
 }
 
@@ -140,7 +140,7 @@ export class IRFunction {
 
 export class IRModule {
     constructor() {
-        this.imports = [];
+        this.imports = []; // [{module, name, kind: 'func'|'global'|'mem'|'table', params, returnType, type, mutable, min, max}]
         this.functions = [];
         this.globals = [];
         this.table = { min: 0, max: 0, elements: [] };
@@ -168,20 +168,46 @@ export class ASTToLowerer {
         this.localMap.clear();
         this.stringOffsets.clear();
 
-        // 1. Setup Standard Host Imports (Print helpers)
-        this.setupImports();
+        // 1. Setup All Function Imports (Host + User Custom)
+        let funcIndex = 0;
+        for (const imp of typeCheckResult.importedFuncs) {
+            const paramTypes = imp.params.map(p => TYPE_METADATA[p.type]?.wasmType || 'i32');
+            const returnType = imp.returnType && imp.returnType !== Type.VOID
+                ? (TYPE_METADATA[imp.returnType]?.wasmType || 'i32')
+                : null;
+
+            this.module.imports.push({
+                module: imp.module,
+                name: imp.exportName || imp.name,
+                kind: 'func',
+                params: paramTypes,
+                returnType: returnType
+            });
+            this.funcMap.set(imp.internalName || imp.name, funcIndex++);
+        }
 
         // 2. Setup Data Segments for constant strings
         this.setupDataSegments(typeCheckResult.stringConstants);
 
-        // 3. Setup Functions index map
-        let funcIndex = this.module.imports.length;
+        // 3. Setup Defined Functions indices
         for (const func of programNode.functions) {
             this.funcMap.set(func.name, funcIndex++);
         }
 
-        // 4. Setup Globals
+        // 4. Setup Globals (Imported Globals + Defined Globals)
         let globalIndex = 0;
+        for (const impG of typeCheckResult.importedGlobals) {
+            const wasmType = TYPE_METADATA[impG.type]?.wasmType || 'i32';
+            this.module.imports.push({
+                module: impG.module,
+                name: impG.name,
+                kind: 'global',
+                wasmType: wasmType,
+                mutable: impG.mutable
+            });
+            this.globalMap.set(impG.internalName, globalIndex++);
+        }
+
         for (const g of programNode.globals) {
             const wasmType = TYPE_METADATA[g.type].wasmType || 'i32';
             this.module.globals.push({
@@ -190,6 +216,9 @@ export class ASTToLowerer {
                 mutable: g.mutable !== false,
                 initValue: g.initExpr ? this.extractConstValue(g.initExpr) : 0
             });
+            if (g.isExported) {
+                this.module.exports.push({ name: g.exportName || g.name, kind: 'global', index: globalIndex });
+            }
             this.globalMap.set(g.name, globalIndex++);
         }
 
@@ -207,12 +236,12 @@ export class ASTToLowerer {
             elements: tableFuncIndices
         };
 
-        // 6. Lower each function
+        // 6. Lower each defined function
         for (const func of programNode.functions) {
             this.lowerFunction(func);
         }
 
-        // 7. Handle main/init statements as start function or exported __main__
+        // 7. Handle Main Body / Start Function
         if (programNode.mainBody && programNode.mainBody.length > 0) {
             const mainFuncIdx = funcIndex++;
             const mainIrFunc = new IRFunction('__main__', mainFuncIdx, [], null);
@@ -226,34 +255,38 @@ export class ASTToLowerer {
             this.module.exports.push({ name: '__main__', kind: 'func', index: mainFuncIdx });
         }
 
-        // Memory export
-        this.module.exports.push({ name: 'memory', kind: 'mem', index: 0 });
+        // Handle explicit start function
+        if (programNode.startFunc) {
+            const startName = typeof programNode.startFunc === 'string' ? programNode.startFunc : programNode.startFunc.funcName;
+            const startIdx = this.funcMap.get(startName);
+            if (startIdx !== undefined) {
+                this.module.startFunctionIndex = startIdx;
+            }
+        }
+
+        // 8. Custom Explicit Exports
+        if (programNode.exports) {
+            for (const exp of programNode.exports) {
+                if (exp.kind === 'func') {
+                    const idx = this.funcMap.get(exp.internalName);
+                    if (idx !== undefined) this.module.exports.push({ name: exp.exportName, kind: 'func', index: idx });
+                } else if (exp.kind === 'global') {
+                    const idx = this.globalMap.get(exp.internalName);
+                    if (idx !== undefined) this.module.exports.push({ name: exp.exportName, kind: 'global', index: idx });
+                } else if (exp.kind === 'mem') {
+                    this.module.exports.push({ name: exp.exportName, kind: 'mem', index: 0 });
+                } else if (exp.kind === 'table') {
+                    this.module.exports.push({ name: exp.exportName, kind: 'table', index: 0 });
+                }
+            }
+        }
+
+        // Ensure default memory export if not already exported
+        if (!this.module.exports.some(e => e.kind === 'mem')) {
+            this.module.exports.push({ name: 'memory', kind: 'mem', index: 0 });
+        }
 
         return this.module;
-    }
-
-    setupImports() {
-        this.module.imports.push({
-            module: 'host',
-            name: 'print_i32',
-            kind: 'func',
-            params: ['i32'],
-            returnType: null
-        });
-        this.module.imports.push({
-            module: 'host',
-            name: 'print_f64',
-            kind: 'func',
-            params: ['f64'],
-            returnType: null
-        });
-        this.module.imports.push({
-            module: 'host',
-            name: 'print_str',
-            kind: 'func',
-            params: ['i32', 'i32'],
-            returnType: null
-        });
     }
 
     setupDataSegments(stringConstants) {
@@ -309,7 +342,7 @@ export class ASTToLowerer {
 
         this.module.functions.push(irFunc);
         if (funcNode.isExported) {
-            this.module.exports.push({ name: funcNode.name, kind: 'func', index: fIdx });
+            this.module.exports.push({ name: funcNode.exportName || funcNode.name, kind: 'func', index: fIdx });
         }
         this.currentFunc = null;
     }
@@ -374,8 +407,9 @@ export class ASTToLowerer {
                 }
                 const globalIdx = this.globalMap.get(node.name);
                 if (globalIdx !== undefined) {
-                    const g = this.module.globals[globalIdx];
-                    return new IRNode(IROp.GLOBAL_GET, g.wasmType, [], globalIdx);
+                    const g = this.module.globals[globalIdx] || this.module.imports.find((_, idx) => idx === globalIdx);
+                    const wasmType = g ? (g.wasmType || 'i32') : 'i32';
+                    return new IRNode(IROp.GLOBAL_GET, wasmType, [], globalIdx);
                 }
                 return null;
             }

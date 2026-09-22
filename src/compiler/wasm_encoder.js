@@ -1,6 +1,6 @@
 /**
  * WebAssembly 1.0 Complete Binary Encoder for Scratch++ (Swarm)
- * 100% Coverage of WebAssembly 1.0 MVP Specification
+ * 100% Coverage of WebAssembly 1.0 MVP Specification (All Sections 0-11 & Opcodes 0x00-0xBF)
  */
 
 import { IROp } from './ir.js';
@@ -133,11 +133,15 @@ export class WasmEncoder {
         // Pre-register types for imports
         const importEntries = [];
         for (const imp of irModule.imports) {
-            const typeIdx = this.getOrAddType(imp.params, imp.returnType);
-            importEntries.push({ ...imp, typeIdx });
+            if (imp.kind === 'func') {
+                const typeIdx = this.getOrAddType(imp.params, imp.returnType);
+                importEntries.push({ ...imp, typeIdx });
+            } else {
+                importEntries.push(imp);
+            }
         }
 
-        // Pre-register types for functions
+        // Pre-register types for defined functions
         const funcTypeIndices = [];
         for (const func of irModule.functions) {
             const typeIdx = this.getOrAddType(func.paramTypes, func.returnType);
@@ -149,7 +153,7 @@ export class WasmEncoder {
             const w = new BinaryWriter();
             w.vu32(this.types.length);
             for (const t of this.types) {
-                w.u8(0x60);
+                w.u8(0x60); // func type
                 w.vu32(t.params.length);
                 for (const p of t.params) w.u8(p);
                 w.vu32(t.results.length);
@@ -158,7 +162,7 @@ export class WasmEncoder {
             return w.toUint8Array();
         });
 
-        // SECTION 2: Import Section
+        // SECTION 2: Import Section (Generic: Func, Table, Memory, Global)
         if (importEntries.length > 0) {
             this.writeSection(mainWriter, 2, () => {
                 const w = new BinaryWriter();
@@ -166,8 +170,25 @@ export class WasmEncoder {
                 for (const imp of importEntries) {
                     w.string(imp.module);
                     w.string(imp.name);
-                    w.u8(0x00);
-                    w.vu32(imp.typeIdx);
+                    if (imp.kind === 'func') {
+                        w.u8(0x00); // func import
+                        w.vu32(imp.typeIdx);
+                    } else if (imp.kind === 'table') {
+                        w.u8(0x01); // table import
+                        w.u8(WasmValType.funcref);
+                        w.u8(imp.max !== null && imp.max !== undefined ? 0x01 : 0x00);
+                        w.vu32(imp.min || 0);
+                        if (imp.max !== null && imp.max !== undefined) w.vu32(imp.max);
+                    } else if (imp.kind === 'mem') {
+                        w.u8(0x02); // mem import
+                        w.u8(imp.max !== null && imp.max !== undefined ? 0x01 : 0x00);
+                        w.vu32(imp.min || 1);
+                        if (imp.max !== null && imp.max !== undefined) w.vu32(imp.max);
+                    } else if (imp.kind === 'global') {
+                        w.u8(0x03); // global import
+                        w.u8(WasmValType[imp.wasmType] || WasmValType.i32);
+                        w.u8(imp.mutable ? 0x01 : 0x00);
+                    }
                 }
                 return w.toUint8Array();
             });
@@ -260,12 +281,21 @@ export class WasmEncoder {
             });
         }
 
+        // SECTION 8: Start Section (0x08)
+        if (irModule.startFunctionIndex !== null && irModule.startFunctionIndex !== undefined) {
+            this.writeSection(mainWriter, 8, () => {
+                const w = new BinaryWriter();
+                w.vu32(irModule.startFunctionIndex);
+                return w.toUint8Array();
+            });
+        }
+
         // SECTION 9: Element Section
         if (irModule.table && irModule.table.elements.length > 0) {
             this.writeSection(mainWriter, 9, () => {
                 const w = new BinaryWriter();
                 w.vu32(1);
-                w.vu32(0);
+                w.vu32(0); // table 0
                 w.u8(0x41);
                 w.vs32(0);
                 w.u8(0x0B);
@@ -489,31 +519,31 @@ export class WasmEncoder {
             case IROp.CONVERT: {
                 const { from, to, signed } = node.imm;
                 if (from === to) break;
-                if (from === Type.I32 && to === Type.I64) { w.u8(signed ? 0xAC : 0xAD); } // i64.extend_i32_s/u
-                else if (from === Type.I32 && to === Type.F32) { w.u8(signed ? 0xB2 : 0xB3); } // f32.convert_i32_s/u
-                else if (from === Type.I32 && to === Type.F64) { w.u8(signed ? 0xB7 : 0xB8); } // f64.convert_i32_s/u
-                else if (from === Type.I64 && to === Type.F32) { w.u8(signed ? 0xB4 : 0xB5); } // f32.convert_i64_s/u
-                else if (from === Type.I64 && to === Type.F64) { w.u8(signed ? 0xB9 : 0xBA); } // f64.convert_i64_s/u
-                else if (from === Type.F32 && to === Type.F64) { w.u8(0xBB); } // f64.promote_f32
-                else if (from === Type.F64 && to === Type.F32) { w.u8(0xB6); } // f32.demote_f64
-                else if (from === Type.F64 && to === Type.I32) { w.u8(signed ? 0xAA : 0xAB); } // i32.trunc_f64_s/u
-                else if (from === Type.F32 && to === Type.I32) { w.u8(signed ? 0xA8 : 0xA9); } // i32.trunc_f32_s/u
-                else if (from === Type.F64 && to === Type.I64) { w.u8(signed ? 0xB0 : 0xB1); } // i64.trunc_f64_s/u
-                else if (from === Type.F32 && to === Type.I64) { w.u8(signed ? 0xAE : 0xAF); } // i64.trunc_f32_s/u
-                else if (from === Type.I64 && to === Type.I32) { w.u8(0xA7); } // i32.wrap_i64
+                if (from === Type.I32 && to === Type.I64) { w.u8(signed ? 0xAC : 0xAD); }
+                else if (from === Type.I32 && to === Type.F32) { w.u8(signed ? 0xB2 : 0xB3); }
+                else if (from === Type.I32 && to === Type.F64) { w.u8(signed ? 0xB7 : 0xB8); }
+                else if (from === Type.I64 && to === Type.F32) { w.u8(signed ? 0xB4 : 0xB5); }
+                else if (from === Type.I64 && to === Type.F64) { w.u8(signed ? 0xB9 : 0xBA); }
+                else if (from === Type.F32 && to === Type.F64) { w.u8(0xBB); }
+                else if (from === Type.F64 && to === Type.F32) { w.u8(0xB6); }
+                else if (from === Type.F64 && to === Type.I32) { w.u8(signed ? 0xAA : 0xAB); }
+                else if (from === Type.F32 && to === Type.I32) { w.u8(signed ? 0xA8 : 0xA9); }
+                else if (from === Type.F64 && to === Type.I64) { w.u8(signed ? 0xB0 : 0xB1); }
+                else if (from === Type.F32 && to === Type.I64) { w.u8(signed ? 0xAE : 0xAF); }
+                else if (from === Type.I64 && to === Type.I32) { w.u8(0xA7); }
                 break;
             }
 
             case IROp.REINTERPRET: {
                 const { from, to } = node.imm;
-                if (from === Type.F32 && to === Type.I32) w.u8(0xBC); // i32.reinterpret_f32
-                else if (from === Type.F64 && to === Type.I64) w.u8(0xBD); // i64.reinterpret_f64
-                else if (from === Type.I32 && to === Type.F32) w.u8(0xBE); // f32.reinterpret_i32
-                else if (from === Type.I64 && to === Type.F64) w.u8(0xBF); // f64.reinterpret_i64
+                if (from === Type.F32 && to === Type.I32) w.u8(0xBC);
+                else if (from === Type.F64 && to === Type.I64) w.u8(0xBD);
+                else if (from === Type.I32 && to === Type.F32) w.u8(0xBE);
+                else if (from === Type.I64 && to === Type.F64) w.u8(0xBF);
                 break;
             }
 
-            // Memory Operations (with align & static offset)
+            // Memory Operations
             case IROp.LOAD:
                 w.u8(type === 'i64' ? 0x29 : (type === 'f32' ? 0x2A : (type === 'f64' ? 0x2B : 0x28)));
                 w.vu32(node.imm?.align ?? (type === 'i64' || type === 'f64' ? 3 : 2));
