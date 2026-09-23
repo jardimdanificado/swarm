@@ -269,6 +269,7 @@ export class SignExtendNode extends ASTNode {
             this.width = arg2;
             this.type = arg3 || 'i32';
         }
+        this.fromBits = this.width;
     }
 }
 
@@ -286,6 +287,10 @@ export class TruncSatNode extends ASTNode {
             this.targetType = arg3 || 'i32';
             this.signedness = typeof arg4 === 'boolean' ? (arg4 ? 'signed' : 'unsigned') : (arg4 || 'signed');
         }
+        this.destType = this.targetType;
+        this.toType = this.targetType;
+        this.fromType = this.srcType;
+        this.isSigned = this.signedness !== 'unsigned';
     }
 }
 

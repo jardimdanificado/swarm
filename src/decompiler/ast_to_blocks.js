@@ -512,11 +512,18 @@ export class ASTToBlocksTranspiler {
             case ASTNodeType.STRING_CONCAT:
                 return `${indent}<block type="spp_string_concat">\n${indent}  <value name="LEFT">\n${this.renderExpression(node.left, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="RIGHT">\n${this.renderExpression(node.right, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
 
-            case ASTNodeType.SIGN_EXTEND:
-                return `${indent}<block type="spp_sign_extend">\n${indent}  <field name="MODE">${node.fromBits}_${node.type}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+            case ASTNodeType.SIGN_EXTEND: {
+                const bits = node.width || node.fromBits || 8;
+                const type = node.type || 'i32';
+                return `${indent}<block type="spp_sign_extend">\n${indent}  <field name="MODE">${bits}_${type}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+            }
 
-            case ASTNodeType.TRUNC_SAT:
-                return `${indent}<block type="spp_trunc_sat">\n${indent}  <field name="MODE">${node.toType}_${node.fromType}_${node.isSigned ? 's' : 'u'}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+            case ASTNodeType.TRUNC_SAT: {
+                const dest = node.targetType || node.destType || node.toType || 'i32';
+                const src = node.srcType || node.fromType || 'f32';
+                const sign = (node.signedness === 'unsigned' || node.isSigned === false) ? 'u' : 's';
+                return `${indent}<block type="spp_trunc_sat">\n${indent}  <field name="MODE">${dest}_${src}_${sign}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+            }
 
             case ASTNodeType.REF_NULL:
                 return `${indent}<block type="spp_ref_null"><field name="TYPE">${node.type}</field></block>`;

@@ -26,9 +26,9 @@ export function registerScratchPPBlocks(Blockly) {
                     ["funcref", "funcref"],
                     ["externref", "externref"],
                     ["bool", "bool"],
-                    ["texto", "texto"],
+                    ["string", "texto"],
                     ["buffer", "buffer"],
-                    ["função", "função"]
+                    ["funcref", "função"]
                 ]), "TYPE");
             this.setPreviousStatement(true, "spp_param");
             this.setNextStatement(true, "spp_param");
@@ -46,7 +46,7 @@ export function registerScratchPPBlocks(Blockly) {
         { id: 'spp_param_bool', type: 'bool', color: TYPE_COLORS.bool, label: 'bool' },
         { id: 'spp_param_texto', type: 'texto', color: TYPE_COLORS.texto, label: 'texto' },
         { id: 'spp_param_buffer', type: 'buffer', color: TYPE_COLORS.buffer, label: 'buffer' },
-        { id: 'spp_param_func', type: 'função', color: TYPE_COLORS.funcao, label: 'função' }
+        { id: 'spp_param_func', type: 'função', color: TYPE_COLORS.funcao, label: 'funcref' }
     ];
 
     for (const pt of paramTypes) {
@@ -131,7 +131,7 @@ export function registerScratchPPBlocks(Blockly) {
                     ["table", "table"]
                 ]), "KIND")
                 .appendField("[")
-                .appendField(new Blockly.FieldTextInput("minhaFuncao"), "INTERNAL_NAME")
+                .appendField(new Blockly.FieldTextInput("myFunction"), "INTERNAL_NAME")
                 .appendField("] as:")
                 .appendField(new Blockly.FieldTextInput("exportedName"), "EXPORT_NAME");
             this.setColour('#8b5cf6');
@@ -143,7 +143,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("⚡ start function:")
-                .appendField(new Blockly.FieldTextInput("minhaFuncao"), "FUNC_NAME");
+                .appendField(new Blockly.FieldTextInput("myFunction"), "FUNC_NAME");
             this.setColour('#ec4899');
             this.setTooltip("Defines start function (0x08) executed automatically on instantiation.");
         }
@@ -321,7 +321,7 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 3. VARIÁVEIS, GLOBAIS E CONSTANTES (TIPAGEM ESTRITA)
+    // 3. VARIABLES, GLOBALS AND CONSTANTS (STRICT TYPING)
     // -------------------------------------------------------------------------
     
     // Generic fallback
@@ -338,9 +338,9 @@ export function registerScratchPPBlocks(Blockly) {
                     ["funcref", "funcref"],
                     ["externref", "externref"],
                     ["bool", "bool"],
-                    ["texto", "texto"],
+                    ["string", "texto"],
                     ["buffer", "buffer"],
-                    ["função", "função"]
+                    ["funcref", "função"]
                 ]), "TYPE")
                 .appendField(new Blockly.FieldTextInput("x"), "NAME")
                 .appendField("=");
@@ -373,7 +373,7 @@ export function registerScratchPPBlocks(Blockly) {
                 this.setPreviousStatement(true);
                 this.setNextStatement(true);
                 this.setColour(dt.color);
-                this.setTooltip(`Declara uma variável local ${dt.label} (blocks incompatible types).`);
+                this.setTooltip(`Declares local variable ${dt.label} (blocks incompatible types).`);
             }
         };
     }
@@ -428,7 +428,7 @@ export function registerScratchPPBlocks(Blockly) {
                 this.setPreviousStatement(true);
                 this.setNextStatement(true);
                 this.setColour(gt.color);
-                this.setTooltip(`Declara global ${gt.label}.`);
+                this.setTooltip(`Declares global ${gt.label}.`);
             }
         };
     }
@@ -552,10 +552,10 @@ export function registerScratchPPBlocks(Blockly) {
     };
 
     // -------------------------------------------------------------------------
-    // 4. OPERAÇÕES ESPECÍFICAS POR TIPO (ZERO CONFUSÃO INT/FLOAT)
+    // 4. TYPE-SPECIFIC OPERATIONS
     // -------------------------------------------------------------------------
     
-    // --- i32 Operações ---
+    // --- i32 Operations ---
     Blockly.Blocks['spp_i32_binop'] = {
         init: function() {
             this.appendValueInput("LEFT").setCheck(["i32", "bool"]);
@@ -616,7 +616,7 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i32.clz (leading zeros)", "CLZ"],
                     ["i32.ctz (trailing zeros)", "CTZ"],
                     ["i32.popcnt (count 1 bits)", "POPCNT"],
-                    ["i32.eqz (é zero?)", "EQZ"]
+                    ["i32.eqz (is zero?)", "EQZ"]
                 ]), "OP");
             this.appendValueInput("EXPR").setCheck(["i32", "bool"]);
             this.setInputsInline(true);
@@ -626,7 +626,7 @@ export function registerScratchPPBlocks(Blockly) {
         }
     };
 
-    // --- i64 Operações ---
+    // --- i64 Operations ---
     Blockly.Blocks['spp_i64_binop'] = {
         init: function() {
             this.appendValueInput("LEFT").setCheck("i64");
@@ -697,7 +697,7 @@ export function registerScratchPPBlocks(Blockly) {
         }
     };
 
-    // --- f32 Operações ---
+    // --- f32 Operations ---
     Blockly.Blocks['spp_f32_binop'] = {
         init: function() {
             this.appendValueInput("LEFT").setCheck("f32");
@@ -755,11 +755,11 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "f32");
             this.setColour(TYPE_COLORS.f32);
-            this.setTooltip("Operação unária f32.");
+            this.setTooltip("f32 unary operation.");
         }
     };
 
-    // --- f64 Operações ---
+    // --- f64 Operations ---
     Blockly.Blocks['spp_f64_binop'] = {
         init: function() {
             this.appendValueInput("LEFT").setCheck("f64");
@@ -817,7 +817,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "f64");
             this.setColour(TYPE_COLORS.f64);
-            this.setTooltip("Operação unária f64.");
+            this.setTooltip("f64 unary operation.");
         }
     };
 
@@ -857,7 +857,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true);
             this.setColour(TYPE_COLORS.math);
-            this.setTooltip("Operação binária genérica.");
+            this.setTooltip("Generic binary operation.");
         }
     };
 
@@ -865,27 +865,27 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendValueInput("EXPR")
                 .appendField(new Blockly.FieldDropdown([
-                    ["negativo (-x)", "NEG"],
-                    ["abs (valor absoluto)", "ABS"],
-                    ["ceil (teto)", "CEIL"],
-                    ["floor (piso)", "FLOOR"],
-                    ["trunc (truncar float)", "TRUNC"],
+                    ["negate (-x)", "NEG"],
+                    ["abs (absolute value)", "ABS"],
+                    ["ceil (ceiling)", "CEIL"],
+                    ["floor", "FLOOR"],
+                    ["trunc (truncate float)", "TRUNC"],
                     ["nearest (round)", "NEAREST"],
-                    ["sqrt (raiz quadrada)", "SQRT"],
+                    ["sqrt (square root)", "SQRT"],
                     ["clz (count leading zeros)", "CLZ"],
                     ["ctz (count trailing zeros)", "CTZ"],
                     ["popcnt (count 1 bits)", "POPCNT"],
-                    ["é zero? (eqz)", "EQZ"],
-                    ["NOT (não lógico)", "NOT"]
+                    ["is zero? (eqz)", "EQZ"],
+                    ["NOT (logical not)", "NOT"]
                 ]), "OP");
             this.setOutput(true);
             this.setColour(TYPE_COLORS.math);
-            this.setTooltip("Operação unária genérica.");
+            this.setTooltip("Generic unary operation.");
         }
     };
 
     // -------------------------------------------------------------------------
-    // 5. CONVERSÕES EXPLÍCITAS & BITCASTS ESPECÍFICOS
+    // 5. EXPLICIT CONVERSIONS & BITCASTS
     // -------------------------------------------------------------------------
     
     // Type-to-Type Conversions
@@ -980,7 +980,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "f64");
             this.setColour(TYPE_COLORS.f64);
-            this.setTooltip("Promove f32 to f64 com precisão dupla.");
+            this.setTooltip("Promotes f32 to double-precision f64.");
         }
     };
 
@@ -991,7 +991,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "f32");
             this.setColour(TYPE_COLORS.f32);
-            this.setTooltip("Rebaixa f64 to f32.");
+            this.setTooltip("Demotes f64 to f32.");
         }
     };
 
@@ -1003,7 +1003,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "i64");
             this.setColour(TYPE_COLORS.i64);
-            this.setTooltip("Estende i32 to i64 (64 bits).");
+            this.setTooltip("Extends i32 to 64-bit i64.");
         }
     };
 
@@ -1014,7 +1014,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "i32");
             this.setColour(TYPE_COLORS.i32);
-            this.setTooltip("Envolve (wrap) i64 descartando os 32 bits mais altos.");
+            this.setTooltip("Wraps i64 discarding high 32 bits.");
         }
     };
 
@@ -1026,7 +1026,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "i32");
             this.setColour(TYPE_COLORS.i32);
-            this.setTooltip("Reinterpreta os 32 bits brutos de um float f32 como i32.");
+            this.setTooltip("Reinterprets raw 32-bit float f32 as i32.");
         }
     };
 
@@ -1037,7 +1037,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "f32");
             this.setColour(TYPE_COLORS.f32);
-            this.setTooltip("Reinterpreta os 32 bits brutos de um i32 como float f32.");
+            this.setTooltip("Reinterprets raw 32-bit integer i32 as float f32.");
         }
     };
 
@@ -1048,7 +1048,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "i64");
             this.setColour(TYPE_COLORS.i64);
-            this.setTooltip("Reinterpreta os 64 bits brutos de um float f64 como i64.");
+            this.setTooltip("Reinterprets raw 64-bit float f64 as i64.");
         }
     };
 
@@ -1059,14 +1059,14 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true, "f64");
             this.setColour(TYPE_COLORS.f64);
-            this.setTooltip("Reinterpreta os 64 bits brutos de um i64 como float f64.");
+            this.setTooltip("Reinterprets raw 64-bit integer i64 as float f64.");
         }
     };
 
     // Generic Fallback Convert & Reinterpret
     Blockly.Blocks['spp_convert'] = {
         init: function() {
-            this.appendValueInput("VALUE").appendField("converter");
+            this.appendValueInput("VALUE").appendField("convert");
             this.appendDummyInput()
                 .appendField("to")
                 .appendField(new Blockly.FieldDropdown([
@@ -1076,11 +1076,11 @@ export function registerScratchPPBlocks(Blockly) {
                     ["f64", "f64"],
                     ["v128", "v128"],
                     ["bool", "bool"],
-                    ["texto", "texto"],
+                    ["string", "texto"],
                     ["buffer", "buffer"],
                     ["funcref", "funcref"],
                     ["externref", "externref"],
-                    ["função", "função"]
+                    ["funcref (alias)", "função"]
                 ]), "TARGET_TYPE")
                 .appendField(new Blockly.FieldDropdown([
                     ["signed", "signed"],
@@ -1095,7 +1095,7 @@ export function registerScratchPPBlocks(Blockly) {
 
     Blockly.Blocks['spp_reinterpret'] = {
         init: function() {
-            this.appendValueInput("VALUE").appendField("reinterpret bits como");
+            this.appendValueInput("VALUE").appendField("reinterpret bits as");
             this.appendDummyInput()
                 .appendField(new Blockly.FieldDropdown([
                     ["i32 (reinterpret_f32)", "i32"],
@@ -1110,7 +1110,7 @@ export function registerScratchPPBlocks(Blockly) {
             this.setInputsInline(true);
             this.setOutput(true);
             this.setColour(TYPE_COLORS.math);
-            this.setTooltip("Bitcast genérico.");
+            this.setTooltip("Generic bitcast.");
         }
     };
 
@@ -1130,9 +1130,9 @@ export function registerScratchPPBlocks(Blockly) {
                     ["2 bytes unsigned (i32.load16_u)", "i32_u16"],
                     ["2 bytes signed (i32.load16_s)", "i32_s16"]
                 ]), "WIDTH_TYPE")
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
-            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("address:");
             this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
             this.setInputsInline(true);
             this.setOutput(true, "i32");
@@ -1154,9 +1154,9 @@ export function registerScratchPPBlocks(Blockly) {
                     ["4 bytes u (i64.load32_u)", "i64_u32"],
                     ["4 bytes s (i64.load32_s)", "i64_s32"]
                 ]), "WIDTH_TYPE")
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
-            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("address:");
             this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
             this.setInputsInline(true);
             this.setOutput(true, "i64");
@@ -1169,9 +1169,9 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("f32.load (4 bytes)")
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
-            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("address:");
             this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
             this.setInputsInline(true);
             this.setOutput(true, "f32");
@@ -1184,9 +1184,9 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("f64.load (8 bytes)")
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
-            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("address:");
             this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
             this.setInputsInline(true);
             this.setOutput(true, "f64");
@@ -1205,10 +1205,10 @@ export function registerScratchPPBlocks(Blockly) {
                     ["1 byte (i32.store8)", "u8"],
                     ["2 bytes (i32.store16)", "u16"]
                 ]), "WIDTH")
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
-            this.appendValueInput("VALUE").setCheck(["i32", "bool"]).appendField("valor i32:");
-            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("VALUE").setCheck(["i32", "bool"]).appendField("i32 value:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("address:");
             this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
             this.setInputsInline(true);
             this.setPreviousStatement(true);
@@ -1228,10 +1228,10 @@ export function registerScratchPPBlocks(Blockly) {
                     ["2 bytes (i64.store16)", "u16"],
                     ["4 bytes (i64.store32)", "u32"]
                 ]), "WIDTH")
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
-            this.appendValueInput("VALUE").setCheck("i64").appendField("valor i64:");
-            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("VALUE").setCheck("i64").appendField("i64 value:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("address:");
             this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
             this.setInputsInline(true);
             this.setPreviousStatement(true);
@@ -1245,10 +1245,10 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("f32.store (4 bytes)")
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
-            this.appendValueInput("VALUE").setCheck("f32").appendField("valor f32:");
-            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("VALUE").setCheck("f32").appendField("f32 value:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("address:");
             this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
             this.setInputsInline(true);
             this.setPreviousStatement(true);
@@ -1262,10 +1262,10 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("f64.store (8 bytes)")
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
-            this.appendValueInput("VALUE").setCheck("f64").appendField("valor f64:");
-            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("endereço:");
+            this.appendValueInput("VALUE").setCheck("f64").appendField("f64 value:");
+            this.appendValueInput("BUFFER").setCheck(["buffer", "i32"]).appendField("address:");
             this.appendValueInput("OFFSET").setCheck("i32").appendField("+ offset:");
             this.setInputsInline(true);
             this.setPreviousStatement(true);
@@ -1283,7 +1283,7 @@ export function registerScratchPPBlocks(Blockly) {
                 .appendField(new Blockly.FieldDropdown([
                     ["i32 (4 bytes)", "i32"],
                     ["i32 u8 (1 byte)", "i32_u8"],
-                    ["i32 s8 (1 byte assinado)", "i32_s8"],
+                    ["i32 s8 (1 signed byte)", "i32_s8"],
                     ["i32 u16 (2 bytes)", "i32_u16"],
                     ["i32 s16 (2 signed bytes)", "i32_s16"],
                     ["i64 (8 bytes)", "i64"],
@@ -1296,15 +1296,15 @@ export function registerScratchPPBlocks(Blockly) {
                     ["f32 (4 bytes)", "f32"],
                     ["f64 (8 bytes)", "f64"]
                 ]), "WIDTH_TYPE")
-                .appendField("endereço:");
+                .appendField("address:");
             this.appendValueInput("OFFSET").appendField("+ offset:");
             this.appendDummyInput()
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
             this.setInputsInline(true);
             this.setOutput(true);
             this.setColour(TYPE_COLORS.memory);
-            this.setTooltip("Instrução load genérica.");
+            this.setTooltip("Generic load instruction.");
         }
     };
 
@@ -1313,22 +1313,22 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendValueInput("VALUE")
                 .appendField("store memory")
                 .appendField(new Blockly.FieldDropdown([
-                    ["completo pelo tipo", "auto"],
+                    ["full width", "auto"],
                     ["8 bits (store8)", "u8"],
                     ["16 bits (store16)", "u16"],
                     ["32 bits (store32)", "u32"]
                 ]), "WIDTH")
                 .appendField("value:");
-            this.appendValueInput("BUFFER").appendField("endereço:");
+            this.appendValueInput("BUFFER").appendField("address:");
             this.appendValueInput("OFFSET").appendField("+ offset:");
             this.appendDummyInput()
-                .appendField("offset estático:")
+                .appendField("static offset:")
                 .appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
             this.setInputsInline(true);
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.memory);
-            this.setTooltip("Instrução store genérica.");
+            this.setTooltip("Generic store instruction.");
         }
     };
 
@@ -1354,7 +1354,7 @@ export function registerScratchPPBlocks(Blockly) {
 
     Blockly.Blocks['spp_alloc_buffer'] = {
         init: function() {
-            this.appendValueInput("SIZE").setCheck("i32").appendField("aloque buffer de");
+            this.appendValueInput("SIZE").setCheck("i32").appendField("allocate buffer of");
             this.appendDummyInput().appendField("bytes");
             this.setOutput(true, "buffer");
             this.setColour(TYPE_COLORS.memory);
@@ -1369,7 +1369,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("⚙️ func")
-                .appendField(new Blockly.FieldTextInput("minhaFuncao"), "NAME")
+                .appendField(new Blockly.FieldTextInput("myFunction"), "NAME")
                 .appendField("returns:")
                 .appendField(new Blockly.FieldDropdown([
                     ["void", "void"],
@@ -1381,7 +1381,7 @@ export function registerScratchPPBlocks(Blockly) {
                     ["funcref", "funcref"],
                     ["externref", "externref"],
                     ["bool", "bool"],
-                    ["texto", "texto"],
+                    ["string", "texto"],
                     ["buffer", "buffer"]
                 ]), "RETURN_TYPE");
             this.appendStatementInput("PARAMS").setCheck("spp_param").appendField("parameters:");
@@ -1395,7 +1395,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("call")
-                .appendField(new Blockly.FieldTextInput("minhaFuncao"), "NAME");
+                .appendField(new Blockly.FieldTextInput("myFunction"), "NAME");
             for (let i = 0; i < 16; i++) {
                 this.appendValueInput(`ARG${i}`).appendField(`arg ${i + 1}:`).setAlign(Blockly.ALIGN_RIGHT);
             }
@@ -1410,7 +1410,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("call")
-                .appendField(new Blockly.FieldTextInput("minhaFuncao"), "NAME");
+                .appendField(new Blockly.FieldTextInput("myFunction"), "NAME");
             for (let i = 0; i < 16; i++) {
                 this.appendValueInput(`ARG${i}`).appendField(i === 0 ? "(" : ",");
             }
@@ -1627,7 +1627,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("ref.func")
-                .appendField(new Blockly.FieldTextInput("minha_funcao"), "NAME");
+                .appendField(new Blockly.FieldTextInput("my_function"), "NAME");
             this.setOutput(true, "funcref");
             this.setColour(TYPE_COLORS.ref);
             this.setTooltip("Gets reference to function.");
@@ -1740,7 +1740,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput()
                 .appendField("⏩ return_call")
-                .appendField(new Blockly.FieldTextInput("minha_funcao"), "NAME");
+                .appendField(new Blockly.FieldTextInput("my_function"), "NAME");
             for (let i = 0; i < 16; i++) {
                 this.appendValueInput(`ARG${i}`).appendField(`arg ${i + 1}:`).setAlign(Blockly.ALIGN_RIGHT);
             }

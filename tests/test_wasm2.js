@@ -212,6 +212,12 @@ async function run() {
         const prog = new ProgramNode([
             new FunctionNode('simd_test', [], Type.V128, [
                 new ReturnNode(new V128SplatNode('i32x4', new ConstNode(42, Type.I32)))
+            ], true),
+            new FunctionNode('sign_ext_test', [], Type.I32, [
+                new ReturnNode(new SignExtendNode(new ConstNode(127, Type.I32), 8, Type.I32))
+            ], true),
+            new FunctionNode('trunc_sat_test', [], Type.I32, [
+                new ReturnNode(new TruncSatNode(new ConstNode(3.14, Type.F32), Type.F32, Type.I32, true))
             ], true)
         ]);
 
@@ -219,6 +225,11 @@ async function run() {
         const xml = transpiler.transpile(prog);
         assert(xml.includes('spp_v128_splat'), 'XML should contain spp_v128_splat block');
         assert(xml.includes('i32x4'), 'XML should contain i32x4 lane type');
+        assert(xml.includes('spp_sign_extend'), 'XML should contain spp_sign_extend block');
+        assert(xml.includes('>8_i32<'), 'XML should contain 8_i32 for spp_sign_extend');
+        assert(xml.includes('spp_trunc_sat'), 'XML should contain spp_trunc_sat block');
+        assert(xml.includes('>i32_f32_s<'), 'XML should contain i32_f32_s for spp_trunc_sat');
+        assert(!xml.includes('undefined'), 'XML must not contain any undefined field values');
     });
 
     // 10. WAT Parser for Wasm 2.0 instructions

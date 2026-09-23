@@ -292,7 +292,7 @@ export const EXAMPLES = [
                   <block type="spp_print">
                     <value name="VALUE">
                       <block type="spp_const_text">
-                        <field name="VALUE">Lendo valores somados:</field>
+                        <field name="VALUE">Reading summed values:</field>
                       </block>
                     </value>
                     <next>
