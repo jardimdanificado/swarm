@@ -1,486 +1,454 @@
 /**
- * swarm Web Studio Stylesheet
- * Chalkboard Dark Aesthetic matching Brack Modular Synthesizer Studio
+ * SWARM-AMP 2000 (Colony Edition)
+ * Exaggerated Y2K Cyber-Ant & Winamp Classic Skin Stylesheet
+ * "It Really Whips The Llama's Anthill!"
  */
 
 :root {
-    --bg: #0c100e;
-    --chalk-board: #151c19;
-    --chalk-white: #f5f6fa;
-    --chalk-yellow: #feca57;
-    --chalk-cyan: #48dbfb;
-    --chalk-pink: #ff6b6b;
-    --chalk-green: #1dd1a1;
-    --chalk-purple: #a29bfe;
-    --chalk-orange: #ff9f43;
-    --editor-bg: #111714;
-    --text-dim: #8395a7;
-    --panel-border: #283731;
+    --winamp-bg: #070c09;
+    --winamp-chassis-top: #3d4f45;
+    --winamp-chassis-mid: #223028;
+    --winamp-chassis-bot: #141c17;
+    --winamp-chassis-dark: #0c120f;
+    --winamp-chrome-light: #83a593;
+    --winamp-chrome-dark: #080d0a;
+    --lcd-bg: #021206;
+    --lcd-border: #164220;
+    --lcd-green: #00ff66;
+    --lcd-green-dim: #008833;
+    --led-amber: #ffb703;
+    --led-red: #ff3333;
+    --winamp-accent: #00f2fe;
+    --panel-border: #2c3d34;
+    --text-dim: #7f998c;
+    --text-bright: #e9f5ee;
 }
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
 }
 
 html, body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: var(--bg);
-    color: var(--chalk-white);
+    background: var(--winamp-bg);
+    color: var(--text-bright);
     display: flex;
     flex-direction: column;
     user-select: none;
     -webkit-user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+
+
+/* =========================================================================
+ * Winamp Deck Header
+ * ========================================================================= */
+.winamp-main-deck {
+    width: 100%;
+    background: linear-gradient(180deg, var(--winamp-chassis-top) 0%, var(--winamp-chassis-mid) 48%, var(--winamp-chassis-bot) 50%, #1c2821 100%);
+    border-bottom: 2px solid #36483f;
+    box-shadow: inset 0 1px 0 var(--winamp-chrome-light), 0 4px 12px rgba(0, 0, 0, 0.8);
+    padding: 5px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    position: relative;
+    flex-shrink: 0;
+    z-index: 100;
+}
+
+.winamp-brand {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 900;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: #e2fbe8;
+    text-shadow: 0 0 6px rgba(0, 255, 102, 0.6), 1px 1px 0 #000;
+    flex-shrink: 0;
+}
+
+.ant-icon-pulse {
+    font-size: 14px;
+    animation: ant-bounce 2s infinite ease-in-out;
+}
+
+@keyframes ant-bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-2px) scale(1.15); }
+}
+
+/* LEDs */
+.winamp-status-leds {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 8px;
+    font-weight: 800;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+.led-indicator {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 4px;
+    background: #0e1511;
+    border: 1px inset #223329;
+    border-radius: 2px;
+}
+
+.led-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #25332b;
+    border: 1px solid #000;
+}
+
+.led-green.active .led-dot {
+    background: var(--lcd-green);
+    box-shadow: 0 0 6px var(--lcd-green), inset 0 0 2px #fff;
+}
+
+.led-amber.active .led-dot {
+    background: var(--led-amber);
+    box-shadow: 0 0 6px var(--led-amber), inset 0 0 2px #fff;
+}
+
+.led-red.active .led-dot {
+    background: var(--led-red);
+    box-shadow: 0 0 6px var(--led-red), inset 0 0 2px #fff;
+    animation: pulse-red 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-red {
+    from { opacity: 0.6; }
+    to { opacity: 1; transform: scale(1.1); }
 }
 
 /* =========================================================================
- * Header Toolbar
+ * Green LCD Panel Display
  * ========================================================================= */
-header {
-    width: 100%;
-    height: 48px;
-    background: linear-gradient(180deg, #18221e 0%, #0f1513 100%);
-    border-bottom: 2px solid var(--panel-border);
-    padding: 0 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-shrink: 0;
-    z-index: 100;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+.winamp-lcd-display {
+    background: var(--lcd-bg);
+    border: 2px inset var(--lcd-border);
+    border-radius: 2px;
+    padding: 3px 6px;
+    box-shadow: inset 0 0 10px rgba(0, 60, 20, 0.9);
 }
 
-h1 {
-    font-size: 15px;
-    letter-spacing: 1.5px;
+.lcd-main-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #ffffff;
-    font-weight: 900;
+    height: 24px;
 }
 
-.badge-wasm {
-    background: #5F3DC4;
-    color: #ffffff;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
+
+
+/* Marquee Ticker */
+.lcd-ticker-container {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    background: #010a03;
+    border: 1px solid #14381e;
+    height: 24px;
+    display: flex;
+    align-items: center;
+}
+
+.lcd-ticker-text {
+    display: inline-block;
+    color: var(--lcd-green);
+    font-size: 11px;
     font-weight: 800;
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px var(--lcd-green);
+    animation: marquee-scroll 24s linear infinite;
+    padding-left: 100%;
 }
 
-.actions {
+@keyframes marquee-scroll {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(-100%, 0); }
+}
+
+/* Time / Byte Display */
+.lcd-time-display {
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--lcd-green);
+    background: #010a03;
+    border: 1px solid #14381e;
+    padding: 2px 6px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px var(--lcd-green);
+    flex-shrink: 0;
+}
+
+/* =========================================================================
+ * Winamp Controls & Action Rack
+ * ========================================================================= */
+.winamp-controls-rack {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    flex-wrap: nowrap;
 }
 
-.btn-play-toggle {
-    background: #059669;
-    color: #ffffff;
-    border: 2px solid #10b981;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+.winamp-transport {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 0 12px rgba(5, 150, 105, 0.4);
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.btn-play-toggle:hover {
-    transform: scale(1.08);
-    background: #10b981;
-    box-shadow: 0 0 16px rgba(16, 185, 129, 0.7);
-}
-
-.btn-play-toggle.running {
-    background: #dc2626;
-    border-color: #ef4444;
-    box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
-    animation: pulse-play 1.3s infinite ease-in-out;
-}
-
-.btn-play-toggle .icon-play { display: block; }
-.btn-play-toggle .icon-stop { display: none; }
-.btn-play-toggle.running .icon-play { display: none; }
-.btn-play-toggle.running .icon-stop { display: block; }
-
-@keyframes pulse-play {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.08); }
-}
-
-.project-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: #111714;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--panel-border);
-}
-
-#example-select {
-    background: #18221e;
-    color: #ffffff;
-    border: 1px solid #384d43;
-    padding: 5px 8px;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 11px;
-    outline: none;
-    max-width: 260px;
-    cursor: pointer;
-}
-
-button, select {
-    background: #18221e;
-    color: #e2e8f0;
-    border: 1px solid #384d43;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    transition: all 0.15s ease;
-    display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
-button:hover, select:hover {
-    background: #23302a;
-    border-color: #55efc4;
+/* Chunky Winamp Buttons */
+.winamp-btn {
+    background: linear-gradient(180deg, #485c50 0%, #25352c 48%, #16211c 50%, #2d3e34 100%);
+    color: #eafbf0;
+    border-top: 2px solid #6b8777;
+    border-left: 2px solid #6b8777;
+    border-right: 2px solid #0a110d;
+    border-bottom: 2px solid #0a110d;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    border-radius: 2px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+    transition: all 0.08s ease;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.winamp-btn:hover {
+    background: linear-gradient(180deg, #587062 0%, #304439 48%, #1c2b24 50%, #384c41 100%);
+    border-top-color: #8bb09c;
+    border-left-color: #8bb09c;
     color: #ffffff;
 }
 
-button.btn-accent {
-    background: #059669;
-    border-color: #34d399;
+.winamp-btn:active, .winamp-btn.active {
+    background: #101914;
+    border-top: 2px solid #0a110d;
+    border-left: 2px solid #0a110d;
+    border-right: 2px solid #6b8777;
+    border-bottom: 2px solid #6b8777;
+    transform: translateY(1px);
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.btn-play-main {
+    background: linear-gradient(180deg, #10b981 0%, #059669 48%, #047857 50%, #065f46 100%);
+    border-top-color: #34d399;
+    border-left-color: #34d399;
     color: #ffffff;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.btn-play-main:hover {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+}
+
+.btn-play-main.running {
+    background: linear-gradient(180deg, #ef4444 0%, #dc2626 48%, #b91c1c 50%, #991b1b 100%);
+    border-top-color: #f87171;
+    border-left-color: #f87171;
+    animation: pulse-red 0.6s infinite alternate;
+}
+
+.btn-compile-main {
+    background: linear-gradient(180deg, #f59e0b 0%, #d97706 48%, #b45309 50%, #92400e 100%);
+    border-top-color: #fbbf24;
+    border-left-color: #fbbf24;
+    color: #ffffff;
+}
+
+.btn-purple {
+    background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 48%, #6d28d9 50%, #5b21b6 100%);
+    border-top-color: #a78bfa;
+    border-left-color: #a78bfa;
+}
+
+.btn-danger {
+    background: linear-gradient(180deg, #64748b 0%, #475569 48%, #334155 50%, #1e293b 100%);
+}
+
+.winamp-btn-tiny {
+    background: #141f19;
+    border: 1px outset #3d5447;
+    color: var(--lcd-green);
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    cursor: pointer;
+}
+.winamp-btn-tiny:hover { background: #23352b; color: #ffffff; }
+
+/* Preset Selector */
+.winamp-preset-selector {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #0f1612;
+    border: 2px inset #1c2b22;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    color: var(--lcd-green);
     font-weight: 800;
 }
 
-button.btn-accent:hover {
-    background: #10b981;
-    box-shadow: 0 0 10px rgba(52, 211, 153, 0.4);
+.winamp-select {
+    background: #050d08;
+    color: var(--lcd-green);
+    border: 1px solid #1c3b25;
+    padding: 3px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    outline: none;
+    max-width: 220px;
+    cursor: pointer;
+    font-family: monospace;
+}
+
+.winamp-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* =========================================================================
- * Main Workspace Grid Layout (Split Screen)
+ * Workspace Grid Layout & Winamp Window Frames
  * ========================================================================= */
 .workspace-grid {
     flex: 1;
     width: 100vw;
-    height: calc(100vh - 48px - 26px);
+    height: calc(100vh - 78px - 24px);
     display: flex;
+    gap: 4px;
+    padding: 4px;
     position: relative;
-    background: var(--bg);
+    background: var(--winamp-bg);
 }
 
-.editor-pane {
-    flex: 1;
-    height: 100%;
-    position: relative;
-    contain: strict;
-}
-
-#blockly-div {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    contain: strict;
-}
-
-.blocklySvg {
-    will-change: transform;
-    shape-rendering: geometricPrecision;
-}
-
-.blocklyBlockCanvas, .blocklyBubbleCanvas {
-    will-change: transform;
-}
-
-/* Side Inspector & Output Panel */
-.inspector-pane {
-    width: 480px;
-    height: 100%;
-    background: #111714;
-    border-left: 2px solid var(--panel-border);
+.winamp-window {
+    background: #101713;
+    border: 3px solid #36483f;
+    box-shadow: inset 1px 1px 0 var(--winamp-chrome-light), inset -1px -1px 0 var(--winamp-chrome-dark), 0 4px 12px rgba(0, 0, 0, 0.7);
+    border-radius: 2px;
     display: flex;
     flex-direction: column;
-    z-index: 50;
+    overflow: hidden;
 }
 
-.tab-nav {
-    display: flex;
-    background: #18221e;
-    border-bottom: 1px solid var(--panel-border);
-}
-
-.tab-btn {
-    flex: 1;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 10px 8px;
-    color: var(--text-dim);
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    justify-content: center;
-}
-
-.tab-btn:hover {
-    background: rgba(255, 255, 255, 0.03);
-    color: #ffffff;
-}
-
-.tab-btn.active {
-    color: #55efc4;
-    border-bottom: 2px solid #55efc4;
-    background: #141c18;
-}
-
-.tab-content {
-    flex: 1;
-    display: none;
-    overflow-y: auto;
-    padding: 12px;
-    font-family: monospace;
-    font-size: 11px;
-    position: relative;
-}
-
-.tab-content.active {
-    display: flex;
-    flex-direction: column;
-}
-
-/* Terminal Console View */
-#console-output {
-    flex: 1;
-    background: #090d0b;
-    border: 1px solid #1c2823;
-    border-radius: 4px;
-    padding: 10px;
-    color: #55efc4;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    font-size: 12px;
-    line-height: 1.5;
-}
-
-.console-entry { margin-bottom: 4px; }
-.console-entry.info { color: #55efc4; }
-.console-entry.warn { color: #feca57; }
-.console-entry.error { color: #ff6b6b; }
-.console-entry.system { color: #8395a7; font-style: italic; }
-
-/* Canvas View */
-.canvas-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    height: 100%;
-}
-
-#runtime-canvas {
-    background: #000000;
-    border: 2px solid var(--panel-border);
-    border-radius: 6px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
-}
-
-/* Disassembly / Inspector text */
-.code-viewer {
-    background: #090d0b;
-    border: 1px solid #1c2823;
-    border-radius: 4px;
-    padding: 10px;
-    color: #dcdde1;
-    overflow-y: auto;
-    font-size: 11px;
-    line-height: 1.4;
-    flex: 1;
-    contain: content;
-    content-visibility: auto;
-}
-
-/* Footer Status Bar */
-.chalk-footer {
-    width: 100%;
-    height: 26px;
-    padding: 0 14px;
+.winamp-window-titlebar {
+    height: 20px;
+    background: repeating-linear-gradient(90deg, #18241e, #18241e 2px, #26382f 2px, #26382f 4px);
+    border-bottom: 1px solid #0b110e;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #111714;
-    border-top: 1px solid #202b26;
-    font-size: 11px;
-    color: var(--text-dim);
+    padding: 0 4px;
+    user-select: none;
     flex-shrink: 0;
-    z-index: 100;
 }
 
-/* High-contrast block text for darker block backgrounds */
-.blocklyText, .blocklyHtmlInput, .blocklyDropdownText {
-    fill: #ffffff !important;
-    font-weight: 700 !important;
-}
-
-.blocklyEditableText > rect {
-    fill: rgba(0, 0, 0, 0.22) !important;
-    stroke: rgba(255, 255, 255, 0.25) !important;
-}
-
-.blocklyToolboxDiv {
-    width: 195px !important;
-    background-color: #141c18 !important;
-    border-right: 1px solid var(--panel-border) !important;
-    overflow-y: auto !important;
-}
-
-.blocklyTreeLabel {
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    color: #dcdde1 !important;
-}
-
-.blocklyFlyoutBackground {
-    fill: #111714 !important;
-    fill-opacity: 0.96 !important;
-}
-
-.blocklyMainBackground {
-    fill: #0c100e !important;
-}
-
-/* Toast Notification */
-.toast {
-    position: fixed;
-    bottom: 40px;
-    right: 20px;
-    background: #10b981;
-    color: #ffffff;
-    padding: 10px 18px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
-    z-index: 2000;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    transform: translateY(10px);
-}
-
-.toast.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-.toast.toast-error { background: #ef4444; }
-.toast.toast-warn { background: #f59e0b; }
-
-/* =========================================================================
- * Function Navigator Sidebar (Paging)
- * ========================================================================= */
-.function-navigator-pane {
-    width: 210px;
-    height: 100%;
-    background: #111714;
-    border-right: 2px solid var(--panel-border);
+.winamp-win-left {
     display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    z-index: 60;
-}
-
-.navigator-header {
-    height: 38px;
-    padding: 0 10px;
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    background: #18221e;
-    border-bottom: 1px solid var(--panel-border);
-}
-
-.badge-count {
-    background: #10b981;
-    color: #ffffff;
+    gap: 4px;
     font-size: 10px;
-    font-weight: 800;
-    padding: 1px 6px;
-    border-radius: 10px;
+    font-weight: 900;
+    color: var(--lcd-green);
+    text-shadow: 1px 1px 0 #000, 0 0 4px rgba(0, 255, 102, 0.5);
+    letter-spacing: 0.5px;
+}
+
+.win-icon { font-size: 11px; }
+
+.winamp-win-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Left Pane: Navigator */
+.function-navigator-pane {
+    width: 220px;
+    flex-shrink: 0;
 }
 
 .navigator-search {
-    padding: 6px 8px;
-    background: #141c18;
-    border-bottom: 1px solid var(--panel-border);
+    padding: 4px 6px;
+    background: #0a110d;
+    border-bottom: 1px solid #1d2c23;
 }
 
 #func-search-input {
     width: 100%;
-    background: #090d0b;
-    border: 1px solid #283731;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 11px;
-    color: #ffffff;
+    background: #040906;
+    border: 1px solid #23382c;
+    color: var(--lcd-green);
+    padding: 3px 6px;
+    font-size: 10px;
+    font-weight: 700;
     outline: none;
+    font-family: monospace;
 }
 
 #func-search-input:focus {
-    border-color: #55efc4;
+    border-color: var(--lcd-green);
+    box-shadow: 0 0 6px rgba(0, 255, 102, 0.4);
 }
 
 .navigator-actions {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 6px 8px;
-    background: #111714;
-    border-bottom: 1px solid var(--panel-border);
+    gap: 3px;
+    padding: 4px 6px;
+    background: #0e1511;
+    border-bottom: 1px solid #1c2b22;
 }
 
 .nav-btn {
     width: 100%;
     text-align: left;
-    background: #18221e;
-    border: 1px solid #283731;
-    padding: 5px 8px;
-    font-size: 11px;
-    font-weight: 700;
-    border-radius: 4px;
+    background: linear-gradient(180deg, #25352c 0%, #17221c 100%);
+    border: 1px solid #364d3f;
+    padding: 4px 6px;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 2px;
     cursor: pointer;
     color: var(--text-dim);
-    transition: all 0.15s ease;
+    transition: all 0.1s ease;
 }
 
 .nav-btn:hover {
-    background: #23302a;
+    background: #25392e;
     color: #ffffff;
 }
 
 .nav-btn.active {
-    background: #059669;
+    background: linear-gradient(180deg, #059669 0%, #064e3b 100%);
     border-color: #34d399;
     color: #ffffff;
+    text-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
 }
 
 .func-list {
@@ -490,53 +458,217 @@ button.btn-accent:hover {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    background: #080f0b;
 }
 
 .func-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 8px;
-    background: #141c18;
-    border: 1px solid transparent;
-    border-radius: 4px;
+    padding: 4px 6px;
+    background: #0e1712;
+    border: 1px solid #1b2b21;
+    border-radius: 2px;
     cursor: pointer;
-    font-size: 11px;
-    color: #e2e8f0;
-    transition: all 0.12s ease;
+    font-size: 10px;
+    color: #c9e8d6;
+    transition: all 0.1s ease;
 }
 
 .func-item:hover {
-    background: #1f2a24;
-    border-color: #384d43;
-    color: #55efc4;
+    background: #182920;
+    border-color: var(--lcd-green);
+    color: var(--lcd-green);
+    box-shadow: inset 0 0 6px rgba(0, 255, 102, 0.2);
 }
 
 .func-item.active {
-    background: #20332a;
-    border-color: #55efc4;
-    color: #55efc4;
+    background: linear-gradient(90deg, #183d28 0%, #0f2418 100%);
+    border-color: var(--lcd-green);
+    color: var(--lcd-green);
     font-weight: 800;
+    text-shadow: 0 0 5px var(--lcd-green);
 }
 
 .func-item-badge {
     font-size: 9px;
-    background: #283731;
+    background: #18261e;
     color: var(--text-dim);
     padding: 1px 4px;
-    border-radius: 3px;
+    border-radius: 2px;
+    border: 1px solid #23352b;
 }
 
-/* =========================================================================
- * Progress Overlay Modal
- * ========================================================================= */
+.badge-count {
+    background: #059669;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 8px;
+    border: 1px solid #34d399;
+}
+
+/* Center: Blockly Canvas */
+.editor-pane {
+    flex: 1;
+    height: 100%;
+    position: relative;
+    contain: strict;
+}
+
+#blockly-div {
+    width: 100%;
+    height: calc(100% - 20px);
+    position: absolute;
+    top: 20px;
+    left: 0;
+    contain: strict;
+}
+
+
+
+/* Right Pane: Inspector & Output */
+.inspector-pane {
+    width: 440px;
+    height: 100%;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Tabs */
+.tab-nav {
+    display: flex;
+    background: #0d1510;
+    border-bottom: 1px solid #1c2b22;
+}
+
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 6px 8px;
+    color: var(--text-dim);
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    justify-content: center;
+}
+
+.tab-btn:hover {
+    background: rgba(0, 255, 102, 0.04);
+    color: #ffffff;
+}
+
+.tab-btn.active {
+    color: var(--lcd-green);
+    border-bottom: 2px solid var(--lcd-green);
+    background: #070d09;
+    text-shadow: 0 0 5px var(--lcd-green);
+}
+
+.tab-content {
+    flex: 1;
+    display: none;
+    overflow-y: auto;
+    padding: 8px;
+    font-family: monospace;
+    font-size: 11px;
+    position: relative;
+    background: #050b07;
+}
+
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Console & Code Viewers */
+#console-output {
+    flex: 1;
+    background: #020704;
+    border: 1px inset #14261b;
+    border-radius: 2px;
+    padding: 8px;
+    color: var(--lcd-green);
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-size: 11px;
+    line-height: 1.4;
+    font-family: "Courier New", Courier, monospace;
+}
+
+.console-entry { margin-bottom: 3px; }
+.console-entry.info { color: var(--lcd-green); }
+.console-entry.warn { color: var(--led-amber); }
+.console-entry.error { color: #ff5252; text-shadow: 0 0 4px #ff5252; }
+.console-entry.system { color: var(--winamp-accent); font-style: italic; }
+
+.code-viewer {
+    background: #020704;
+    border: 1px inset #14261b;
+    border-radius: 2px;
+    padding: 8px;
+    color: #d1fae5;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.4;
+    flex: 1;
+    font-family: "Courier New", Courier, monospace;
+}
+
+/* Footer Status Bar */
+.chalk-footer {
+    width: 100%;
+    height: 24px;
+    padding: 0 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0a110d;
+    border-top: 1px solid #1c2b22;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--lcd-green);
+    flex-shrink: 0;
+    z-index: 100;
+    text-shadow: 0 0 4px rgba(0, 255, 102, 0.4);
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 36px;
+    right: 16px;
+    background: #059669;
+    color: #ffffff;
+    border: 2px solid #34d399;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), 0 0 10px rgba(52, 211, 153, 0.5);
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: translateY(10px);
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.toast-error { background: #dc2626; border-color: #f87171; box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+.toast.toast-warn { background: #d97706; border-color: #fbbf24; }
+
+/* Modal */
 .progress-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(4px);
     z-index: 3000;
     display: flex;
@@ -545,40 +677,42 @@ button.btn-accent:hover {
 }
 
 .progress-card {
-    background: #151c19;
-    border: 2px solid #283731;
-    border-radius: 8px;
-    padding: 24px;
-    width: 420px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+    background: #0d1510;
+    border: 3px solid #36483f;
+    box-shadow: inset 1px 1px 0 var(--winamp-chrome-light), inset -1px -1px 0 var(--winamp-chrome-dark), 0 10px 40px rgba(0, 0, 0, 0.95);
+    border-radius: 4px;
+    padding: 20px;
+    width: 400px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
 }
 
 .progress-title {
-    font-size: 14px;
-    font-weight: 800;
-    color: #55efc4;
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--lcd-green);
+    text-shadow: 0 0 6px var(--lcd-green);
 }
 
 .progress-bar-bg {
     width: 100%;
-    height: 10px;
-    background: #090d0b;
-    border-radius: 5px;
+    height: 12px;
+    background: #020704;
+    border: 1px inset #14261b;
+    border-radius: 2px;
     overflow: hidden;
-    border: 1px solid #283731;
 }
 
 .progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #10b981, #55efc4);
+    background: linear-gradient(90deg, #059669, #00ff66);
+    box-shadow: 0 0 8px #00ff66;
     transition: width 0.2s ease;
 }
 
 .progress-status {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-dim);
 }
 
@@ -590,58 +724,57 @@ button.btn-accent:hover {
 }
 
 @media (max-width: 768px) {
-    header {
-        height: 48px;
-        padding: 0 8px;
-        gap: 6px;
+    .winamp-main-deck {
+        padding: 4px 6px;
+        gap: 4px;
     }
 
-    h1 {
-        font-size: 13px;
-        letter-spacing: 0.5px;
-        flex-shrink: 0;
+    .winamp-brand {
+        font-size: 11px;
     }
 
-    .actions {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        padding: 4px 0;
-        gap: 6px;
-    }
-
-    .actions::-webkit-scrollbar {
+    .lcd-header-row {
         display: none;
     }
 
-    .project-toolbar {
-        padding: 2px 4px;
+    .lcd-main-row {
+        height: 22px;
     }
 
-    #example-select {
-        max-width: 130px;
-        font-size: 10px;
-        padding: 4px 6px;
+    .winamp-controls-rack {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 2px 0;
+        gap: 4px;
     }
 
-    button {
-        padding: 6px 8px;
-        font-size: 10px;
-        min-height: 32px;
+    .winamp-controls-rack::-webkit-scrollbar {
+        display: none;
     }
 
-    .btn-play-toggle {
-        width: 32px;
-        height: 32px;
-        flex-shrink: 0;
+    .winamp-preset-selector {
+        padding: 1px 4px;
+    }
+
+    .winamp-select {
+        max-width: 120px;
+        font-size: 9px;
+    }
+
+    .winamp-btn {
+        padding: 3px 6px;
+        font-size: 9px;
     }
 
     .workspace-grid {
         position: relative;
         width: 100vw;
-        height: calc(100vh - 48px - 50px);
+        height: calc(100vh - 78px - 50px);
         overflow: hidden;
         display: block;
+        padding: 2px;
+        gap: 0;
     }
 
     .function-navigator-pane,
@@ -653,11 +786,11 @@ button.btn-accent:hover {
         width: 100% !important;
         height: 100% !important;
         display: none;
+        border: none;
     }
 
     body.mobile-view-nav .function-navigator-pane {
         display: flex;
-        border-right: none;
         z-index: 10;
     }
 
@@ -668,7 +801,6 @@ button.btn-accent:hover {
 
     body.mobile-view-inspector .inspector-pane {
         display: flex;
-        border-left: none;
         z-index: 10;
     }
 
@@ -683,43 +815,44 @@ button.btn-accent:hover {
         left: 0;
         right: 0;
         height: 50px;
-        background: #151c19;
-        border-top: 2px solid var(--panel-border);
+        background: #0d1510;
+        border-top: 2px solid #283731;
         z-index: 1000;
         justify-content: space-around;
         align-items: stretch;
         padding: 0 4px;
-        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.9);
     }
 
     .mobile-tab-btn {
         flex: 1;
         background: transparent;
         border: none;
-        border-radius: 6px;
+        border-radius: 4px;
         margin: 4px 2px;
-        padding: 4px;
+        padding: 2px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         color: var(--text-dim);
-        font-size: 10px;
-        font-weight: 700;
+        font-size: 9px;
+        font-weight: 800;
         cursor: pointer;
         transition: all 0.15s ease;
         gap: 2px;
     }
 
     .mobile-tab-btn:hover {
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(0, 255, 102, 0.05);
         color: #ffffff;
     }
 
     .mobile-tab-btn.active {
-        background: #20332a;
-        color: #55efc4;
-        border: 1px solid #384d43;
+        background: #182920;
+        color: var(--lcd-green);
+        border: 1px solid var(--lcd-green);
+        text-shadow: 0 0 5px var(--lcd-green);
     }
 
     .mobile-tab-icon {
@@ -728,14 +861,16 @@ button.btn-accent:hover {
     }
 
     .mobile-tab-label {
-        font-size: 10px;
+        font-size: 9px;
         letter-spacing: 0.3px;
     }
 
     .progress-card {
         width: calc(100vw - 32px);
-        max-width: 400px;
-        padding: 16px;
+        max-width: 380px;
+        padding: 14px;
     }
 }
+
+
 

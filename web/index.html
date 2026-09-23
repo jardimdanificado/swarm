@@ -3,78 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>swarm // WebAssembly 2.0 Studio</title>
+    <title>swarm</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐜</text></svg>">
     <link rel="stylesheet" href="style.css">
     <script src="vendor/blockly.min.js"></script>
 </head>
 <body class="mobile-view-editor">
 
-    <!-- Header Toolbar -->
-    <header>
-        <h1>
-            <span>🐜 swarm</span>
-        </h1>
+    <!-- Compact Winamp-styled Deck Header -->
+    <header class="winamp-main-deck">
+        <!-- Green LCD Status Panel -->
+        <div class="winamp-lcd-display">
+            <div class="lcd-main-row">
+                <div class="winamp-brand">
+                    <span class="ant-icon-pulse">🐜</span>
+                    <span class="winamp-logo-text">SWARM</span>
+                </div>
 
-        <div class="actions">
-            <!-- Run / Stop Button -->
-            <button id="btn-run" class="btn-play-toggle" title="Run Program (Space)">
-                <svg class="icon-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                <svg class="icon-stop" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="6" width="12" height="12"></rect>
-                </svg>
-            </button>
+                <div class="winamp-status-leds">
+                    <div class="led-indicator led-green active" title="Power ON"><span class="led-dot"></span>PWR</div>
+                    <div class="led-indicator led-amber" id="led-compile" title="Compilation Activity"><span class="led-dot"></span>ASM</div>
+                    <div class="led-indicator led-red" id="led-exec" title="Execution Running"><span class="led-dot"></span>RUN</div>
+                </div>
 
-            <!-- Example Selector -->
-            <div class="project-toolbar">
-                <label for="example-select" style="font-size: 11px; color: var(--text-dim); font-weight: 700;">Example:</label>
-                <select id="example-select"></select>
+                <!-- Green Marquee Ticker -->
+                <div class="lcd-ticker-container">
+                    <div class="lcd-ticker-text" id="lcd-ticker">
+                        *** 🐜 SWARM STUDIO // READY ***
+                    </div>
+                </div>
+
+                <!-- Byte / Size Display -->
+                <div class="lcd-time-display" id="lcd-byte-counter">0000 B</div>
+            </div>
+        </div>
+
+        <!-- Toolbar Action Rack -->
+        <div class="winamp-controls-rack">
+            <!-- Execution Buttons -->
+            <div class="winamp-transport">
+                <button id="btn-run" class="winamp-btn btn-play-main" title="Run Program (Space)">
+                    <span class="btn-icon">▶</span> <span class="btn-lbl">RUN</span>
+                </button>
+                <button id="btn-compile" class="winamp-btn btn-compile-main" title="Compile Visual Blocks to Wasm">
+                    <span class="btn-icon">🔨</span> <span class="btn-lbl">COMPILE</span>
+                </button>
             </div>
 
-            <button id="btn-compile" class="btn-accent" title="Compile to Wasm">
-                <span>🔨 Compile</span>
-            </button>
+            <!-- Example Presets Dropdown -->
+            <div class="winamp-preset-selector">
+                <label for="example-select">Example:</label>
+                <select id="example-select" class="winamp-select"></select>
+            </div>
 
-            <button id="btn-export-wasm" title="Download compiled .wasm binary">
-                <span>📦 Export .wasm</span>
-            </button>
+            <!-- Studio Actions -->
+            <div class="winamp-actions-group">
+                <button id="btn-toggle-toolbox" class="winamp-btn active" title="Show/Hide Blocks Sidebar">
+                    <span>🧱 PALETTE</span>
+                </button>
+                <button id="btn-export-wasm" class="winamp-btn" title="Download compiled .wasm binary">
+                    <span>📦 .WASM</span>
+                </button>
+                <button id="btn-export-spp" class="winamp-btn" title="Save .spp project (JSON)">
+                    <span>💾 .SPP</span>
+                </button>
+                <button id="btn-import-spp" class="winamp-btn" title="Open .spp project">
+                    <span>📂 OPEN</span>
+                </button>
+                <input type="file" id="file-input-spp" accept=".spp,.json" style="display: none;">
 
-            <button id="btn-export-spp" title="Save .spp project (JSON)">
-                <span>💾 Save .spp</span>
-            </button>
+                <button id="btn-decompile-wasm" class="winamp-btn btn-purple" title="Decompile binary .wasm or text .wat into visual blocks">
+                    <span>📥 DECOMPILE</span>
+                </button>
+                <input type="file" id="file-input-wasm" accept=".wasm,.wat" style="display: none;">
 
-            <button id="btn-import-spp" title="Open .spp project">
-                <span>📂 Open</span>
-            </button>
-            <input type="file" id="file-input-spp" accept=".spp,.json" style="display: none;">
-
-            <button id="btn-decompile-wasm" class="btn-accent" style="background: #6c5ce7;" title="Decompile binary .wasm or text .wat into visual blocks">
-                <span>📥 Decompile Wasm/WAT</span>
-            </button>
-            <input type="file" id="file-input-wasm" accept=".wasm,.wat" style="display: none;">
-
-            <button id="btn-clear" title="Clear Workspace">
-                <span>🗑️ Clear</span>
-            </button>
+                <button id="btn-clear" class="winamp-btn btn-danger" title="Clear Workspace">
+                    <span>🗑️ CLEAR</span>
+                </button>
+            </div>
         </div>
     </header>
 
     <!-- Main Studio Split Workspace -->
     <main class="workspace-grid">
         <!-- Left: Function Navigator Sidebar (Paging) -->
-        <aside class="function-navigator-pane" id="func-navigator">
-            <div class="navigator-header">
-                <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">🐜 FUNCTIONS</span>
-                <span id="func-count-badge" class="badge-count">0</span>
+        <aside class="function-navigator-pane winamp-window" id="func-navigator">
+            <div class="winamp-window-titlebar">
+                <div class="winamp-win-left">
+                    <span class="win-icon">🐜</span>
+                    <span class="win-title">FUNCTIONS</span>
+                </div>
+                <span class="badge-count" id="func-count-badge">0</span>
             </div>
             <div class="navigator-search">
                 <input type="text" id="func-search-input" placeholder="🔍 Filter functions...">
             </div>
             <div class="navigator-actions">
                 <button class="nav-btn active" id="btn-view-all" data-view="all">🌐 View All</button>
-                <button class="nav-btn" id="btn-view-overview" data-view="overview">📋 Module / Globals</button>
+                <button class="nav-btn" id="btn-view-overview" data-view="overview">📋 Module & Globals</button>
             </div>
             <div class="func-list" id="func-list-container">
                 <!-- Dynamic function items -->
@@ -82,12 +108,28 @@
         </aside>
 
         <!-- Center: Blockly Canvas -->
-        <div class="editor-pane">
+        <div class="editor-pane winamp-window">
+            <div class="winamp-window-titlebar">
+                <div class="winamp-win-left">
+                    <span class="win-icon">🐜</span>
+                    <span class="win-title">WORKSPACE</span>
+                </div>
+                <div class="winamp-win-actions">
+                    <button id="btn-toggle-toolbox-alt" class="winamp-btn-tiny" title="Show/Hide Blocks Palette">🧱 Blocks</button>
+                </div>
+            </div>
             <div id="blockly-div"></div>
         </div>
 
         <!-- Right: Inspector / Console / Wasm Display -->
-        <aside class="inspector-pane">
+        <aside class="inspector-pane winamp-window">
+            <div class="winamp-window-titlebar">
+                <div class="winamp-win-left">
+                    <span class="win-icon">🐜</span>
+                    <span class="win-title">INSPECTOR & OUTPUT</span>
+                </div>
+            </div>
+
             <nav class="tab-nav">
                 <button class="tab-btn active" data-tab="tab-console">📟 Console</button>
                 <button class="tab-btn" data-tab="tab-wasm">📦 Wasm Binary</button>
@@ -97,8 +139,8 @@
             <!-- Tab 1: Console -->
             <div id="tab-console" class="tab-content active">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span style="color: var(--text-dim); font-weight: bold;">Wasm Runtime Output:</span>
-                    <button id="btn-clear-console" style="padding: 2px 6px; font-size: 10px;">Clear Logs</button>
+                    <span style="color: var(--lcd-green); font-weight: bold; font-family: monospace;">Runtime Output:</span>
+                    <button id="btn-clear-console" class="winamp-btn-tiny">Clear</button>
                 </div>
                 <div id="console-output"></div>
             </div>
@@ -135,7 +177,7 @@
     <!-- Footer Status -->
     <footer class="chalk-footer">
         <div id="status-left">🐜 swarm Studio Ready.</div>
-        <div id="status-right">100% WebAssembly 2.0 • Full Opcode Coverage</div>
+        <div id="status-right"></div>
     </footer>
 
     <!-- Toast Notification -->
@@ -295,7 +337,7 @@
             <block type="spp_print"></block>
         </category>
 
-        <category name="Wasm 2.0: SIMD 128 (v128)" colour="#ec4899">
+        <category name="SIMD 128 (v128)" colour="#ec4899">
             <block type="spp_v128_const"></block>
             <block type="spp_v128_splat"></block>
             <block type="spp_v128_extract_lane"></block>
@@ -306,7 +348,7 @@
             <block type="spp_v128_store"></block>
         </category>
 
-        <category name="Wasm 2.0: References & Tables" colour="#84cc16">
+        <category name="References & Tables" colour="#84cc16">
             <block type="spp_table_declare"></block>
             <block type="spp_ref_null"></block>
             <block type="spp_ref_is_null"></block>
@@ -321,7 +363,7 @@
             <block type="spp_elem_drop"></block>
         </category>
 
-        <category name="Wasm 2.0: Bulk Memory & Extensions" colour="#059669">
+        <category name="Bulk Memory & Extensions" colour="#059669">
             <block type="spp_sign_extend"></block>
             <block type="spp_trunc_sat"></block>
             <block type="spp_mem_copy"></block>

@@ -178,6 +178,9 @@ function setMobileView(viewName) {
  * Compilation Pipeline
  * ========================================================================= */
 function compileWorkspace(silent = false) {
+    const ledCompile = document.getElementById('led-compile');
+    if (ledCompile) ledCompile.classList.add('active');
+
     try {
         const programAst = projectManager ? projectManager.getUnifiedProgramAst() : (new ASTGenerator(workspace)).generate();
         if (!programAst) return null;
@@ -195,6 +198,16 @@ function compileWorkspace(silent = false) {
             statusLeft.textContent = `🐜 Compilation OK: ${lastCompiledWasm.length} bytes Wasm`;
         }
 
+        const byteCounter = document.getElementById('lcd-byte-counter');
+        if (byteCounter) {
+            byteCounter.textContent = `${lastCompiledWasm.length.toString().padStart(4, '0')} B`;
+        }
+
+        const ticker = document.getElementById('lcd-ticker');
+        if (ticker) {
+            ticker.textContent = `*** 🐜 SWARM STUDIO // COMPILATION SUCCESS: ${lastCompiledWasm.length} BYTES WASM GENERATED *** READY ***`;
+        }
+
         return compileResult;
     } catch (err) {
         if (!silent) {
@@ -203,8 +216,18 @@ function compileWorkspace(silent = false) {
             showToast(err.message, 'error');
         }
         const statusLeft = document.getElementById('status-left');
-        if (statusLeft) statusLeft.textContent = `⚠️ Compilation: ${err.message}`;
+        if (statusLeft) statusLeft.textContent = `⚠️ Compilation Error: ${err.message}`;
+
+        const ticker = document.getElementById('lcd-ticker');
+        if (ticker) {
+            ticker.textContent = `*** ⚠️ COMPILATION ERROR: ${err.message.toUpperCase()} ***`;
+        }
+
         return null;
+    } finally {
+        if (ledCompile) {
+            setTimeout(() => ledCompile.classList.remove('active'), 400);
+        }
     }
 }
 
@@ -216,8 +239,16 @@ async function executeProgram() {
     if (!compileResult || !lastCompiledWasm) return;
 
     const btnRun = document.getElementById('btn-run');
+    const ledExec = document.getElementById('led-exec');
+
     isRunning = true;
     if (btnRun) btnRun.classList.add('running');
+    if (ledExec) ledExec.classList.add('active');
+
+    const ticker = document.getElementById('lcd-ticker');
+    if (ticker) {
+        ticker.textContent = `*** 🐜 RUNNING WEBASSEMBLY MODULE... ***`;
+    }
 
     appendConsole('--- Starting Wasm Execution ---', 'system');
 
@@ -227,13 +258,21 @@ async function executeProgram() {
 
         appendConsole(`--- Execution Finished in ${res.durationMs.toFixed(2)}ms ---`, 'system');
         showToast(`Executed successfully (${res.durationMs.toFixed(2)}ms)!`, 'success');
+
+        if (ticker) {
+            ticker.textContent = `*** 🐜 EXECUTION COMPLETED IN ${res.durationMs.toFixed(2)}ms *** READY ***`;
+        }
     } catch (err) {
         console.error('Runtime error:', err);
         appendConsole(`[Runtime Error] ${err.message}`, 'error');
         showToast(err.message, 'error');
+        if (ticker) {
+            ticker.textContent = `*** ⚠️ RUNTIME TRAP: ${err.message.toUpperCase()} ***`;
+        }
     } finally {
         isRunning = false;
         if (btnRun) btnRun.classList.remove('running');
+        if (ledExec) ledExec.classList.remove('active');
     }
 }
 
@@ -373,6 +412,24 @@ window.addEventListener('DOMContentLoaded', () => {
     registerScratchPPBlocks(Blockly);
     const theme = initScratchTheme(Blockly);
 
+    // Fixed scale for sidebar blocks (do not resize when main workspace zooms)
+    const FIXED_FLYOUT_SCALE = 0.85;
+    if (Blockly.VerticalFlyout && Blockly.VerticalFlyout.prototype) {
+        Blockly.VerticalFlyout.prototype.getFlyoutScale = function() {
+            return FIXED_FLYOUT_SCALE;
+        };
+    }
+    if (Blockly.HorizontalFlyout && Blockly.HorizontalFlyout.prototype) {
+        Blockly.HorizontalFlyout.prototype.getFlyoutScale = function() {
+            return FIXED_FLYOUT_SCALE;
+        };
+    }
+    if (Blockly.Flyout && Blockly.Flyout.prototype) {
+        Blockly.Flyout.prototype.getFlyoutScale = function() {
+            return FIXED_FLYOUT_SCALE;
+        };
+    }
+
     // 2. Inject Blockly Workspace
     workspace = Blockly.inject('blockly-div', {
         toolbox: document.getElementById('toolbox'),
@@ -382,6 +439,14 @@ window.addEventListener('DOMContentLoaded', () => {
         sounds: false,
         theme: theme
     });
+
+    const flyout = workspace.getFlyout ? workspace.getFlyout() : (workspace.getToolbox() ? workspace.getToolbox().getFlyout() : null);
+    if (flyout) {
+        flyout.getFlyoutScale = function() { return FIXED_FLYOUT_SCALE; };
+        if (flyout.getWorkspace && flyout.getWorkspace()) {
+            flyout.getWorkspace().setScale(FIXED_FLYOUT_SCALE);
+        }
+    }
 
     // 3. Initialize Compiler, Runtime & Project Manager
     compiler = new Compiler();
@@ -465,6 +530,41 @@ window.addEventListener('DOMContentLoaded', () => {
     loadExample('fibonacci');
 
     // 7. Setup Action Buttons
+    function toggleToolbox() {
+        if (!workspace) return;
+        const toolbox = workspace.getToolbox();
+        if (!toolbox) return;
+
+        const isVisible = typeof toolbox.isVisible === 'function' ? toolbox.isVisible() : (toolbox.HtmlDiv ? toolbox.HtmlDiv.style.display !== 'none' : true);
+        const nextState = !isVisible;
+        toolbox.setVisible(nextState);
+        if (!nextState && toolbox.getFlyout()) {
+            toolbox.getFlyout().hide();
+            if (typeof toolbox.clearSelection === 'function') {
+                toolbox.clearSelection();
+            }
+        }
+        Blockly.svgResize(workspace);
+
+        const btn1 = document.getElementById('btn-toggle-toolbox');
+        const btn2 = document.getElementById('btn-toggle-toolbox-alt');
+        [btn1, btn2].forEach(btn => {
+            if (!btn) return;
+            if (nextState) {
+                btn.classList.add('active');
+                btn.title = 'Hide Blocks Palette';
+            } else {
+                btn.classList.remove('active');
+                btn.title = 'Show Blocks Palette';
+            }
+        });
+    }
+
+    const btnToggleToolbox = document.getElementById('btn-toggle-toolbox');
+    if (btnToggleToolbox) btnToggleToolbox.addEventListener('click', toggleToolbox);
+    const btnToggleToolboxAlt = document.getElementById('btn-toggle-toolbox-alt');
+    if (btnToggleToolboxAlt) btnToggleToolboxAlt.addEventListener('click', toggleToolbox);
+
     const btnRun = document.getElementById('btn-run');
     if (btnRun) btnRun.addEventListener('click', () => executeProgram());
 
