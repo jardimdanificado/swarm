@@ -11,6 +11,7 @@ import {
     ConstNode,
     V128ConstNode,
     V128SplatNode,
+    V128ExtractLaneNode,
     RefNullNode
 } from './ast.js';
 
@@ -756,6 +757,11 @@ export class TypeChecker {
                 return node;
             }
 
+            case ASTNodeType.INLINE_WAT: {
+                node.inferredType = node.returnType || Type.VOID;
+                return node;
+            }
+
             default:
                 return node;
         }
@@ -815,6 +821,41 @@ export class TypeChecker {
                 splat.inferredType = Type.V128;
                 return splat;
             }
+        }
+
+        if (fromType === Type.V128) {
+            if (targetType === Type.BOOL || targetType === Type.I32) {
+                const extract = new V128ExtractLaneNode('i32x4', 0, exprNode);
+                extract.inferredType = targetType;
+                return extract;
+            }
+            if (targetType === Type.I64) {
+                const extract = new V128ExtractLaneNode('i64x2', 0, exprNode);
+                extract.inferredType = targetType;
+                return extract;
+            }
+            if (targetType === Type.F32) {
+                const extract = new V128ExtractLaneNode('f32x4', 0, exprNode);
+                extract.inferredType = targetType;
+                return extract;
+            }
+            if (targetType === Type.F64) {
+                const extract = new V128ExtractLaneNode('f64x2', 0, exprNode);
+                extract.inferredType = targetType;
+                return extract;
+            }
+        }
+
+        if (fromType === Type.I64 && (targetType === Type.BOOL || targetType === Type.I32)) {
+            const convert = new ConvertNode(exprNode, Type.I32, false);
+            convert.inferredType = targetType;
+            return convert;
+        }
+
+        if ((fromType === Type.F32 || fromType === Type.F64) && (targetType === Type.BOOL || targetType === Type.I32)) {
+            const convert = new ConvertNode(exprNode, Type.I32, false);
+            convert.inferredType = targetType;
+            return convert;
         }
 
         if (canAutoWiden(fromType, targetType)) {

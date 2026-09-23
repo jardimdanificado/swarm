@@ -1,6 +1,7 @@
 /**
  * Scratch++ (Swarm) Web Studio Application Orchestrator
- * Real-Time Visual Programming, WebAssembly 1.0 Compilation & Execution
+ * Real-Time Visual Programming, WebAssembly 2.0 Compilation & Execution
+ * High-Throughput Function-Level Paging & Web Worker Multi-Threading
  */
 
 import { registerScratchPPBlocks } from './blocks/blocks_definitions.js';
@@ -11,11 +12,14 @@ import { ScratchRuntime } from '../src/runtime/runtime.js';
 import { WasmDecoder } from '../src/decompiler/wasm_decoder.js';
 import { WatParser } from '../src/decompiler/wat_parser.js';
 import { ASTToBlocksTranspiler } from '../src/decompiler/ast_to_blocks.js';
+import { ProjectManager } from './project_manager.js';
 import { EXAMPLES } from './examples.js';
 
 let workspace = null;
 let compiler = null;
 let runtime = null;
+let projectManager = null;
+let decompilerWorker = null;
 let lastCompiledWasm = null;
 let isRunning = false;
 
@@ -38,6 +42,25 @@ function showToast(message, type = 'success') {
     toastTimer = setTimeout(() => {
         toast.classList.remove('show');
     }, 2500);
+}
+
+/* =========================================================================
+ * Progress Modal Overlay Helpers
+ * ========================================================================= */
+function showProgressModal(title, percent, status) {
+    const modal = document.getElementById('progress-modal');
+    const titleEl = document.getElementById('progress-title');
+    const fillEl = document.getElementById('progress-bar-fill');
+    const statusEl = document.getElementById('progress-status');
+    if (modal) modal.style.display = 'flex';
+    if (titleEl && title) titleEl.textContent = title;
+    if (fillEl && percent !== undefined) fillEl.style.width = `${percent}%`;
+    if (statusEl && status) statusEl.textContent = status;
+}
+
+function hideProgressModal() {
+    const modal = document.getElementById('progress-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 /* =========================================================================
@@ -133,8 +156,8 @@ function updateTabUI(tabId) {
  * ========================================================================= */
 function compileWorkspace(silent = false) {
     try {
-        const astGen = new ASTGenerator(workspace);
-        const programAst = astGen.generate();
+        const programAst = projectManager ? projectManager.getUnifiedProgramAst() : (new ASTGenerator(workspace)).generate();
+        if (!programAst) return null;
 
         const compileResult = compiler.compile(programAst);
         lastCompiledWasm = compileResult.wasmBytes;
@@ -218,6 +241,37 @@ function serializeXmlDom(xmlDom) {
 }
 
 /* =========================================================================
+ * Function Navigator UI Controller
+ * ========================================================================= */
+function updateNavigatorUI(functionsList) {
+    const badge = document.getElementById('func-count-badge');
+    if (badge) badge.textContent = functionsList.length;
+
+    const container = document.getElementById('func-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const searchFilter = (document.getElementById('func-search-input')?.value || '').toLowerCase();
+
+    functionsList.forEach((fn) => {
+        if (searchFilter && !fn.name.toLowerCase().includes(searchFilter)) return;
+
+        const item = document.createElement('div');
+        item.className = 'func-item' + (projectManager && projectManager.activeView === fn.index ? ' active' : '');
+        item.innerHTML = `
+            <span style="font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${fn.name}</span>
+            <span class="func-item-badge">${fn.returnType} (${fn.bodyCount})</span>
+        `;
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.nav-btn, .func-item').forEach(el => el.classList.remove('active'));
+            item.classList.add('active');
+            projectManager.loadView(fn.index);
+        });
+        container.appendChild(item);
+    });
+}
+
+/* =========================================================================
  * Project / Example Management
  * ========================================================================= */
 function loadXmlToWorkspace(xmlText) {
@@ -228,6 +282,11 @@ function loadXmlToWorkspace(xmlText) {
         workspace.clear();
         const dom = parseXmlText(xmlText);
         Blockly.Xml.domToWorkspace(dom, workspace);
+        
+        // Generate AST and update project manager
+        const gen = new ASTGenerator(workspace);
+        const ast = gen.generate();
+        projectManager.setProgram(ast);
     } finally {
         if (disableEvents) Blockly.Events.enable();
     }
@@ -243,11 +302,13 @@ function loadExample(exampleId) {
 }
 
 function exportSppProject() {
-    const dom = Blockly.Xml.workspaceToDom(workspace);
-    const xmlText = serializeXmlDom(dom);
+    const ast = projectManager.getUnifiedProgramAst();
+    const transpiler = new ASTToBlocksTranspiler();
+    const xmlText = transpiler.transpile(ast);
+
     const projectData = {
         name: 'Projeto Scratch++',
-        version: '1.0.0',
+        version: '2.0.0',
         xml: xmlText
     };
 
@@ -298,13 +359,73 @@ window.addEventListener('DOMContentLoaded', () => {
         theme: theme
     });
 
-    // 3. Initialize Compiler & Runtime
+    // 3. Initialize Compiler, Runtime & Project Manager
     compiler = new Compiler();
     runtime = new ScratchRuntime({
         onPrint: (text) => appendConsole(text, 'info')
     });
+    projectManager = new ProjectManager(workspace);
+    projectManager.onFunctionsChanged = updateNavigatorUI;
 
-    // 4. Setup Examples Dropdown
+    // 4. Initialize Background Decompiler Web Worker
+    try {
+        decompilerWorker = new Worker('./workers/decompiler_worker.js', { type: 'module' });
+        decompilerWorker.onmessage = (e) => {
+            const data = e.data;
+            if (data.type === 'progress') {
+                showProgressModal('⚡ Descompilando WebAssembly...', data.percent, data.message);
+            } else if (data.type === 'complete') {
+                hideProgressModal();
+                const initialView = (data.functionsList && data.functionsList.length > 8) ? 0 : 'all';
+                projectManager.setProgram(data.ast, initialView);
+                
+                document.querySelectorAll('.nav-btn, .func-item').forEach(el => el.classList.remove('active'));
+                if (initialView === 'all') {
+                    document.getElementById('btn-view-all')?.classList.add('active');
+                } else if (typeof initialView === 'number') {
+                    const items = document.querySelectorAll('.func-item');
+                    if (items[0]) items[0].classList.add('active');
+                }
+
+                showToast(`Arquivo "${data.fileName}" descompilado (${data.functionsList?.length || 0} funções)!`, 'success');
+                compileWorkspace();
+            } else if (data.type === 'error') {
+                hideProgressModal();
+                console.error('Erro no Worker:', data);
+                showToast(`Erro na descompilação: ${data.message}`, 'error');
+            }
+        };
+    } catch (err) {
+        console.warn('Web Worker não pôde ser iniciado, usando modo síncrono inline.', err);
+    }
+
+    // 5. Setup Navigator UI Listeners
+    const searchInput = document.getElementById('func-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            updateNavigatorUI(projectManager.getFunctionsList());
+        });
+    }
+
+    const btnAll = document.getElementById('btn-view-all');
+    if (btnAll) {
+        btnAll.addEventListener('click', () => {
+            document.querySelectorAll('.nav-btn, .func-item').forEach(el => el.classList.remove('active'));
+            btnAll.classList.add('active');
+            projectManager.loadView('all');
+        });
+    }
+
+    const btnOverview = document.getElementById('btn-view-overview');
+    if (btnOverview) {
+        btnOverview.addEventListener('click', () => {
+            document.querySelectorAll('.nav-btn, .func-item').forEach(el => el.classList.remove('active'));
+            btnOverview.classList.add('active');
+            projectManager.loadView('overview');
+        });
+    }
+
+    // 6. Setup Examples Dropdown
     const select = document.getElementById('example-select');
     if (select) {
         EXAMPLES.forEach(e => {
@@ -319,7 +440,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Load Initial Example (Fibonacci)
     loadExample('fibonacci');
 
-    // 5. Setup Action Buttons
+    // 7. Setup Action Buttons
     const btnRun = document.getElementById('btn-run');
     if (btnRun) btnRun.addEventListener('click', () => executeProgram());
 
@@ -376,31 +497,58 @@ window.addEventListener('DOMContentLoaded', () => {
 
             if (isWat) {
                 reader.onload = (evt) => {
-                    try {
-                        const watText = evt.target.result;
-                        const ast = watParser.parse(watText);
-                        const xmlText = astToBlocks.transpile(ast);
-                        loadXmlToWorkspace(xmlText);
-                        showToast(`WAT "${file.name}" descompilado com sucesso!`, 'success');
-                        compileWorkspace();
-                    } catch (err) {
-                        console.error('Erro ao descompilar WAT:', err);
-                        showToast(`Erro ao descompilar WAT: ${err.message}`, 'error');
+                    const watText = evt.target.result;
+                    if (decompilerWorker) {
+                        showProgressModal('⚡ Descompilando WAT...', 5, 'Enviando para thread worker...');
+                        decompilerWorker.postMessage({
+                            action: 'decompile_wat',
+                            watText: watText,
+                            fileName: file.name
+                        });
+                    } else {
+                        try {
+                            const ast = watParser.parse(watText);
+                            const initialView = (ast.functions && ast.functions.length > 8) ? 0 : 'all';
+                            projectManager.setProgram(ast, initialView);
+                            document.querySelectorAll('.nav-btn, .func-item').forEach(el => el.classList.remove('active'));
+                            if (initialView === 'all') {
+                                document.getElementById('btn-view-all')?.classList.add('active');
+                            }
+                            showToast(`WAT "${file.name}" descompilado com sucesso!`, 'success');
+                            compileWorkspace();
+                        } catch (err) {
+                            console.error('Erro ao descompilar WAT:', err);
+                            showToast(`Erro ao descompilar WAT: ${err.message}`, 'error');
+                        }
                     }
                 };
                 reader.readAsText(file);
             } else {
                 reader.onload = (evt) => {
-                    try {
-                        const buffer = new Uint8Array(evt.target.result);
-                        const ast = wasmDecoder.decode(buffer);
-                        const xmlText = astToBlocks.transpile(ast);
-                        loadXmlToWorkspace(xmlText);
-                        showToast(`Binário .wasm "${file.name}" descompilado com sucesso!`, 'success');
-                        compileWorkspace();
-                    } catch (err) {
-                        console.error('Erro ao descompilar .wasm:', err);
-                        showToast(`Erro ao descompilar .wasm: ${err.message}`, 'error');
+                    const buffer = evt.target.result;
+                    if (decompilerWorker) {
+                        showProgressModal('⚡ Descompilando .wasm...', 5, 'Enviando para thread worker...');
+                        decompilerWorker.postMessage({
+                            action: 'decompile_wasm',
+                            buffer: buffer,
+                            fileName: file.name
+                        }, [buffer]);
+                    } else {
+                        try {
+                            const uint8 = new Uint8Array(buffer);
+                            const ast = wasmDecoder.decode(uint8);
+                            const initialView = (ast.functions && ast.functions.length > 8) ? 0 : 'all';
+                            projectManager.setProgram(ast, initialView);
+                            document.querySelectorAll('.nav-btn, .func-item').forEach(el => el.classList.remove('active'));
+                            if (initialView === 'all') {
+                                document.getElementById('btn-view-all')?.classList.add('active');
+                            }
+                            showToast(`Binário .wasm "${file.name}" descompilado com sucesso!`, 'success');
+                            compileWorkspace();
+                        } catch (err) {
+                            console.error('Erro ao descompilar .wasm:', err);
+                            showToast(`Erro ao descompilar .wasm: ${err.message}`, 'error');
+                        }
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -418,7 +566,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const btnClearConsole = document.getElementById('btn-clear-console');
     if (btnClearConsole) btnClearConsole.addEventListener('click', clearConsole);
 
-    // 6. Tab Navigation
+    // 8. Tab Navigation
     const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -434,7 +582,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 7. Keyboard Shortcuts
+    // 9. Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' && (e.target === document.body || e.target === document.documentElement)) {
             e.preventDefault();

@@ -1074,8 +1074,13 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i64", "i64"],
                     ["f32", "f32"],
                     ["f64", "f64"],
+                    ["v128", "v128"],
                     ["bool", "bool"],
-                    ["texto", "texto"]
+                    ["texto", "texto"],
+                    ["buffer", "buffer"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"],
+                    ["função", "função"]
                 ]), "TARGET_TYPE")
                 .appendField(new Blockly.FieldDropdown([
                     ["signed", "signed"],
@@ -1096,7 +1101,11 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i32 (reinterpret_f32)", "i32"],
                     ["i64 (reinterpret_f64)", "i64"],
                     ["f32 (reinterpret_i32)", "f32"],
-                    ["f64 (reinterpret_i64)", "f64"]
+                    ["f64 (reinterpret_i64)", "f64"],
+                    ["v128", "v128"],
+                    ["buffer", "buffer"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"]
                 ]), "TARGET_TYPE");
             this.setInputsInline(true);
             this.setOutput(true);
@@ -1387,12 +1396,9 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendDummyInput()
                 .appendField("call")
                 .appendField(new Blockly.FieldTextInput("minhaFuncao"), "NAME");
-            this.appendValueInput("ARG0").appendField("arg 1:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG1").appendField("arg 2:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG2").appendField("arg 3:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG3").appendField("arg 4:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG4").appendField("arg 5:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG5").appendField("arg 6:").setAlign(Blockly.ALIGN_RIGHT);
+            for (let i = 0; i < 16; i++) {
+                this.appendValueInput(`ARG${i}`).appendField(`arg ${i + 1}:`).setAlign(Blockly.ALIGN_RIGHT);
+            }
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.functions);
@@ -1405,12 +1411,9 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendDummyInput()
                 .appendField("call")
                 .appendField(new Blockly.FieldTextInput("minhaFuncao"), "NAME");
-            this.appendValueInput("ARG0").appendField("(");
-            this.appendValueInput("ARG1").appendField(",");
-            this.appendValueInput("ARG2").appendField(",");
-            this.appendValueInput("ARG3").appendField(",");
-            this.appendValueInput("ARG4").appendField(",");
-            this.appendValueInput("ARG5").appendField(",");
+            for (let i = 0; i < 16; i++) {
+                this.appendValueInput(`ARG${i}`).appendField(i === 0 ? "(" : ",");
+            }
             this.appendDummyInput().appendField(")");
             this.setInputsInline(true);
             this.setOutput(true);
@@ -1445,12 +1448,16 @@ export function registerScratchPPBlocks(Blockly) {
                     ["f64", "f64"],
                     ["v128", "v128"],
                     ["funcref", "funcref"],
-                    ["externref", "externref"]
+                    ["externref", "externref"],
+                    ["bool", "bool"],
+                    ["texto", "texto"],
+                    ["buffer", "buffer"]
                 ]), "RETURN_TYPE")
                 .appendField("tipos params:")
                 .appendField(new Blockly.FieldTextInput("i32"), "PARAM_TYPES");
-            this.appendValueInput("ARG0").appendField("arg 1:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG1").appendField("arg 2:").setAlign(Blockly.ALIGN_RIGHT);
+            for (let i = 0; i < 16; i++) {
+                this.appendValueInput(`ARG${i}`).appendField(`arg ${i + 1}:`).setAlign(Blockly.ALIGN_RIGHT);
+            }
             this.setOutput(true);
             this.setColour(TYPE_COLORS.funcao);
             this.setTooltip("Instrução call_indirect através da tabela funcref.");
@@ -1734,9 +1741,9 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendDummyInput()
                 .appendField("⏩ return_call")
                 .appendField(new Blockly.FieldTextInput("minha_funcao"), "NAME");
-            this.appendValueInput("ARG0").appendField("arg 1:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG1").appendField("arg 2:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG2").appendField("arg 3:").setAlign(Blockly.ALIGN_RIGHT);
+            for (let i = 0; i < 16; i++) {
+                this.appendValueInput(`ARG${i}`).appendField(`arg ${i + 1}:`).setAlign(Blockly.ALIGN_RIGHT);
+            }
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.functions);
@@ -1748,8 +1755,9 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput().appendField("⏩ return_call_indirect tabela:").appendField(new Blockly.FieldNumber(0), "TABLE_IDX");
             this.appendValueInput("FUNC_INDEX").appendField("índice na tabela:");
-            this.appendValueInput("ARG0").appendField("arg 1:").setAlign(Blockly.ALIGN_RIGHT);
-            this.appendValueInput("ARG1").appendField("arg 2:").setAlign(Blockly.ALIGN_RIGHT);
+            for (let i = 0; i < 16; i++) {
+                this.appendValueInput(`ARG${i}`).appendField(`arg ${i + 1}:`).setAlign(Blockly.ALIGN_RIGHT);
+            }
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.functions);
@@ -1878,6 +1886,27 @@ export function registerScratchPPBlocks(Blockly) {
             this.setNextStatement(true);
             this.setColour(TYPE_COLORS.v128);
             this.setTooltip("Grava vetor de 128 bits na memória.");
+        }
+    };
+
+    Blockly.Blocks['spp_inline_wat'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("⚡ Inline WAT")
+                .appendField(new Blockly.FieldDropdown([
+                    ["void", "void"],
+                    ["i32", "i32"],
+                    ["i64", "i64"],
+                    ["f32", "f32"],
+                    ["f64", "f64"],
+                    ["v128", "v128"]
+                ]), "TYPE");
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldTextInput("nop"), "CODE");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour('#6c5ce7');
+            this.setTooltip("Trecho de instruções WebAssembly Text (WAT) executado inline.");
         }
     };
 }

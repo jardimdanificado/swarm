@@ -58,6 +58,7 @@ export const ASTNodeType = {
     REF_FUNC: 'RefFunc',
     TABLE_GET: 'TableGet',
     TABLE_SET: 'TableSet',
+    INLINE_WAT: 'InlineWat',
     TABLE_SIZE: 'TableSize',
     TABLE_GROW: 'TableGrow',
     TABLE_FILL: 'TableFill',
@@ -758,5 +759,13 @@ export class PrintNode extends ASTNode {
     constructor(expr) {
         super(ASTNodeType.PRINT);
         this.expr = expr;
+    }
+}
+
+export class InlineWatNode extends ASTNode {
+    constructor(watCode = '', returnType = 'void') {
+        super(ASTNodeType.INLINE_WAT);
+        this.watCode = watCode;
+        this.returnType = returnType;
     }
 }

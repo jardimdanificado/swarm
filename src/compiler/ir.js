@@ -6,6 +6,7 @@
 
 import { Type, TYPE_METADATA } from './types.js';
 import { ASTNodeType } from './ast.js';
+import { WatParser } from '../decompiler/wat_parser.js';
 
 export const IROp = {
     // Constants
@@ -955,6 +956,24 @@ export class ASTToLowerer {
                     const printI32Idx = this.funcMap.get('print_i32') || 0;
                     return new IRNode(IROp.CALL, null, [i32Ir], printI32Idx);
                 }
+            }
+
+            case ASTNodeType.INLINE_WAT: {
+                if (!node.watCode || !node.watCode.trim()) {
+                    return new IRNode(IROp.NOP, null, []);
+                }
+                try {
+                    const watParser = new WatParser();
+                    const dummyWat = `(module (func (export "tmp") ${node.watCode}))`;
+                    const parsed = watParser.parse(dummyWat);
+                    if (parsed.functions && parsed.functions.length > 0) {
+                        const bodyIrs = parsed.functions[0].body.map(stmt => this.lowerNode(stmt)).filter(Boolean);
+                        return new IRNode(IROp.BLOCK, node.returnType === 'void' ? null : node.returnType, [], { body: bodyIrs });
+                    }
+                } catch (e) {
+                    console.warn('Error parsing inline WAT:', e);
+                }
+                return new IRNode(IROp.NOP, null, []);
             }
 
             default:

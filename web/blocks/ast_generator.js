@@ -58,6 +58,7 @@ import {
     TableSizeNode,
     TableGrowNode,
     TableFillNode,
+    InlineWatNode,
     TableCopyNode,
     TableInitNode,
     ElemDropNode,
@@ -360,6 +361,12 @@ export class ASTGenerator {
                 return new PrintNode(valExpr);
             }
 
+            case 'spp_inline_wat': {
+                const code = block.getFieldValue('CODE') || 'nop';
+                const type = block.getFieldValue('TYPE') || 'void';
+                return new InlineWatNode(code, type);
+            }
+
             case 'spp_i32_store':
             case 'spp_i64_store':
             case 'spp_f32_store':
@@ -380,7 +387,7 @@ export class ASTGenerator {
             case 'spp_return_call': {
                 const name = block.getFieldValue('NAME');
                 const args = [];
-                for (let i = 0; i < 6; i++) {
+                for (let i = 0; i < 16; i++) {
                     const argBlock = block.getInputTargetBlock(`ARG${i}`);
                     if (argBlock) args.push(this.parseExpression(argBlock));
                 }
@@ -392,7 +399,7 @@ export class ASTGenerator {
                 const funcBlock = block.getInputTargetBlock('FUNC_INDEX');
                 const funcExpr = funcBlock ? this.parseExpression(funcBlock) : new ConstNode(0, Type.I32);
                 const args = [];
-                for (let i = 0; i < 6; i++) {
+                for (let i = 0; i < 16; i++) {
                     const argBlock = block.getInputTargetBlock(`ARG${i}`);
                     if (argBlock) args.push(this.parseExpression(argBlock));
                 }
@@ -496,7 +503,7 @@ export class ASTGenerator {
             case 'spp_call_stmt': {
                 const name = block.getFieldValue('NAME');
                 const args = [];
-                for (let i = 0; i < 6; i++) {
+                for (let i = 0; i < 16; i++) {
                     const argBlock = block.getInputTargetBlock(`ARG${i}`);
                     if (argBlock) args.push(this.parseExpression(argBlock));
                 }
@@ -736,7 +743,7 @@ export class ASTGenerator {
             case 'spp_call_expr': {
                 const name = block.getFieldValue('NAME');
                 const args = [];
-                for (let i = 0; i < 6; i++) {
+                for (let i = 0; i < 16; i++) {
                     const argBlock = block.getInputTargetBlock(`ARG${i}`);
                     if (argBlock) args.push(this.parseExpression(argBlock));
                 }
@@ -756,7 +763,7 @@ export class ASTGenerator {
                 const paramTypes = pTypesRaw.split(',').map(s => s.trim()).filter(Boolean);
 
                 const args = [];
-                for (let i = 0; i < 2; i++) {
+                for (let i = 0; i < 16; i++) {
                     const argBlock = block.getInputTargetBlock(`ARG${i}`);
                     if (argBlock) args.push(this.parseExpression(argBlock));
                 }

@@ -131,6 +131,109 @@ export class ASTToBlocksTranspiler {
         return xml;
     }
 
+    transpileFunction(func, x = 40, y = 40) {
+        let xml = '<xml xmlns="https://developers.google.com/blockly/xml">\n';
+        xml += `  <block type="spp_function_def" x="${x}" y="${y}">\n`;
+        xml += `    <field name="NAME">${this.escape(func.name)}</field>\n`;
+        xml += `    <field name="RETURN_TYPE">${func.returnType || 'void'}</field>\n`;
+        if (func.params && func.params.length > 0) {
+            xml += `    <statement name="PARAMS">\n`;
+            xml += this.renderParamChain(func.params, '      ');
+            xml += `    </statement>\n`;
+        }
+        if (func.body && func.body.length > 0) {
+            xml += `    <statement name="BODY">\n`;
+            xml += this.renderStatementChain(func.body, '      ');
+            xml += `    </statement>\n`;
+        }
+        xml += `  </block>\n`;
+        xml += '</xml>';
+        return xml;
+    }
+
+    transpileOverview(programNode) {
+        this.currentX = 40;
+        this.currentY = 40;
+        let xml = '<xml xmlns="https://developers.google.com/blockly/xml">\n';
+
+        if (programNode.imports) {
+            for (const imp of programNode.imports) {
+                if (imp.nodeType === ASTNodeType.IMPORT_FUNC) {
+                    xml += `  <block type="spp_import_func" x="${this.currentX}" y="${this.currentY}">\n`;
+                    xml += `    <field name="NAME">${this.escape(imp.name)}</field>\n`;
+                    xml += `    <field name="MODULE">${this.escape(imp.module)}</field>\n`;
+                    xml += `    <field name="ALIAS">${this.escape(imp.internalName)}</field>\n`;
+                    xml += `    <field name="RETURN_TYPE">${imp.returnType || 'void'}</field>\n`;
+                    if (imp.params && imp.params.length > 0) {
+                        xml += `    <statement name="PARAMS">\n`;
+                        xml += this.renderParamChain(imp.params, '      ');
+                        xml += `    </statement>\n`;
+                    }
+                    xml += `  </block>\n`;
+                    this.advanceLayout(140);
+                } else if (imp.nodeType === ASTNodeType.IMPORT_GLOBAL) {
+                    xml += `  <block type="spp_import_global" x="${this.currentX}" y="${this.currentY}">\n`;
+                    xml += `    <field name="NAME">${this.escape(imp.name)}</field>\n`;
+                    xml += `    <field name="MODULE">${this.escape(imp.module)}</field>\n`;
+                    xml += `    <field name="ALIAS">${this.escape(imp.internalName)}</field>\n`;
+                    xml += `    <field name="TYPE">${imp.type}</field>\n`;
+                    xml += `    <field name="MUTABLE">${imp.mutable ? 'mut' : 'const'}</field>\n`;
+                    xml += `  </block>\n`;
+                    this.advanceLayout(100);
+                }
+            }
+        }
+
+        if (programNode.tables) {
+            for (const t of programNode.tables) {
+                xml += `  <block type="spp_table_declare" x="${this.currentX}" y="${this.currentY}">\n`;
+                xml += `    <field name="NAME">${this.escape(t.name)}</field>\n`;
+                xml += `    <field name="TYPE">${t.type}</field>\n`;
+                xml += `    <field name="MIN">${t.minSize || 0}</field>\n`;
+                xml += `    <field name="MAX">${t.maxSize !== null && t.maxSize !== undefined ? t.maxSize : ''}</field>\n`;
+                xml += `  </block>\n`;
+                this.advanceLayout(100);
+            }
+        }
+
+        if (programNode.exports) {
+            for (const exp of programNode.exports) {
+                xml += `  <block type="spp_export_decl" x="${this.currentX}" y="${this.currentY}">\n`;
+                xml += `    <field name="KIND">${exp.kind}</field>\n`;
+                xml += `    <field name="INTERNAL_NAME">${this.escape(exp.internalName)}</field>\n`;
+                xml += `    <field name="EXPORT_NAME">${this.escape(exp.exportName)}</field>\n`;
+                xml += `  </block>\n`;
+                this.advanceLayout(90);
+            }
+        }
+
+        if (programNode.globals) {
+            for (const g of programNode.globals) {
+                xml += `  <block type="spp_global_declare" x="${this.currentX}" y="${this.currentY}">\n`;
+                xml += `    <field name="NAME">${this.escape(g.name)}</field>\n`;
+                xml += `    <field name="TYPE">${g.type}</field>\n`;
+                xml += `    <field name="MUTABLE">${g.mutable ? 'mut' : 'const'}</field>\n`;
+                if (g.initExpr) {
+                    xml += `    <value name="INIT">\n${this.renderExpression(g.initExpr, '      ')}\n    </value>\n`;
+                }
+                xml += `  </block>\n`;
+                this.advanceLayout(100);
+            }
+        }
+
+        if (programNode.mainBody && programNode.mainBody.length > 0) {
+            xml += `  <block type="spp_start" x="${this.currentX}" y="${this.currentY}">\n`;
+            xml += `    <next>\n`;
+            xml += this.renderStatementChain(programNode.mainBody, '      ');
+            xml += `    </next>\n`;
+            xml += `  </block>\n`;
+            this.advanceLayout(200);
+        }
+
+        xml += '</xml>';
+        return xml;
+    }
+
     renderParamChain(params, indent = '') {
         if (!params || params.length === 0) return '';
         const [first, ...rest] = params;
@@ -298,6 +401,9 @@ export class ASTToBlocksTranspiler {
 
             case ASTNodeType.DATA_DROP:
                 return `${indent}<block type="spp_data_drop">\n${indent}  <field name="SEGMENT">${node.dataIndex}</field>\n${indent}</block>\n`;
+
+            case ASTNodeType.INLINE_WAT:
+                return `${indent}<block type="spp_inline_wat">\n${indent}  <field name="TYPE">${node.returnType || 'void'}</field>\n${indent}  <field name="CODE">${this.escape(node.watCode || 'nop')}</field>\n${indent}</block>\n`;
 
             case ASTNodeType.TABLE_SET:
                 return `${indent}<block type="spp_table_set">\n${indent}  <field name="TABLE_IDX">${node.tableIndex}</field>\n${indent}  <value name="INDEX">\n${this.renderExpression(node.offsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valueExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;

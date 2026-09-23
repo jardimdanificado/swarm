@@ -64,7 +64,25 @@
 
     <!-- Main Studio Split Workspace -->
     <main class="workspace-grid">
-        <!-- Left: Blockly Canvas -->
+        <!-- Left: Function Navigator Sidebar (Paging) -->
+        <aside class="function-navigator-pane" id="func-navigator">
+            <div class="navigator-header">
+                <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">⚡ FUNÇÕES</span>
+                <span id="func-count-badge" class="badge-count">0</span>
+            </div>
+            <div class="navigator-search">
+                <input type="text" id="func-search-input" placeholder="🔍 Filtrar função...">
+            </div>
+            <div class="navigator-actions">
+                <button class="nav-btn active" id="btn-view-all" data-view="all">🌐 Ver Todas</button>
+                <button class="nav-btn" id="btn-view-overview" data-view="overview">📋 Módulo / Globais</button>
+            </div>
+            <div class="func-list" id="func-list-container">
+                <!-- Dynamic function items -->
+            </div>
+        </aside>
+
+        <!-- Center: Blockly Canvas -->
         <div class="editor-pane">
             <div id="blockly-div"></div>
         </div>
@@ -102,13 +120,24 @@
     <!-- Footer Status -->
     <footer class="chalk-footer">
         <div id="status-left">⚡ Scratch++ Studio Pronto.</div>
-        <div id="status-right">100% WebAssembly 1.0 (MVP) • Cobertura Completa de Opcodes</div>
+        <div id="status-right">100% WebAssembly 2.0 • Cobertura Completa de Opcodes</div>
     </footer>
 
     <!-- Toast Notification -->
     <div id="toast-notification" class="toast">Notificação</div>
 
-    <!-- Blockly Toolbox XML Definition: 100% WebAssembly 1.0 Instructions -->
+    <!-- Decompile Progress Overlay Modal -->
+    <div id="progress-modal" class="progress-overlay" style="display: none;">
+        <div class="progress-card">
+            <div class="progress-title" id="progress-title">⚡ Processando WebAssembly...</div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div class="progress-status" id="progress-status">Iniciando...</div>
+        </div>
+    </div>
+
+    <!-- Blockly Toolbox XML Definition: 100% WebAssembly Instructions -->
     <xml id="toolbox" style="display: none">
         <category name="Controle & Fluxo" colour="#d97706">
             <block type="spp_start"></block>
@@ -129,6 +158,7 @@
             <block type="spp_drop"></block>
             <block type="spp_nop"></block>
             <block type="spp_unreachable"></block>
+            <block type="spp_inline_wat"></block>
         </category>
 
         <category name="i32 (Inteiro 32)" colour="#3b82f6">
