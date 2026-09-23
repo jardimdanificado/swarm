@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scratch++ // 100% WebAssembly 1.0 Studio (Swarm)</title>
+    <title>Scratch++ // WebAssembly 2.0 Studio (Swarm)</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <link rel="stylesheet" href="style.css">
     <script src="vendor/blockly.min.js"></script>
@@ -14,12 +14,12 @@
     <header>
         <h1>
             <span>⚡ Scratch++</span>
-            <span class="badge-wasm">WASM 1.0 (100% MVP)</span>
+            <span class="badge-wasm">WASM 2.0 (100% SPEC)</span>
         </h1>
 
         <div class="actions">
             <!-- Run / Stop Button -->
-            <button id="btn-run" class="btn-play-toggle" title="Executar Programa (Espaço)">
+            <button id="btn-run" class="btn-play-toggle" title="Run Program (Space)">
                 <svg class="icon-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
@@ -30,34 +30,34 @@
 
             <!-- Example Selector -->
             <div class="project-toolbar">
-                <label for="example-select" style="font-size: 11px; color: var(--text-dim); font-weight: 700;">Exemplo:</label>
+                <label for="example-select" style="font-size: 11px; color: var(--text-dim); font-weight: 700;">Example:</label>
                 <select id="example-select"></select>
             </div>
 
-            <button id="btn-compile" class="btn-accent" title="Compilar para Wasm">
-                <span>🔨 Compilar</span>
+            <button id="btn-compile" class="btn-accent" title="Compile to Wasm">
+                <span>🔨 Compile</span>
             </button>
 
-            <button id="btn-export-wasm" title="Baixar arquivo .wasm compilado">
-                <span>📦 Exportar .wasm</span>
+            <button id="btn-export-wasm" title="Download compiled .wasm binary">
+                <span>📦 Export .wasm</span>
             </button>
 
-            <button id="btn-export-spp" title="Salvar projeto .spp (JSON)">
-                <span>💾 Salvar .spp</span>
+            <button id="btn-export-spp" title="Save .spp project (JSON)">
+                <span>💾 Save .spp</span>
             </button>
 
-            <button id="btn-import-spp" title="Carregar projeto .spp">
-                <span>📂 Abrir</span>
+            <button id="btn-import-spp" title="Open .spp project">
+                <span>📂 Open</span>
             </button>
             <input type="file" id="file-input-spp" accept=".spp,.json" style="display: none;">
 
-            <button id="btn-decompile-wasm" class="btn-accent" style="background: #6c5ce7;" title="Descompilar arquivo binário .wasm ou texto .wat em blocos visuais">
-                <span>📥 Descompilar Wasm/WAT</span>
+            <button id="btn-decompile-wasm" class="btn-accent" style="background: #6c5ce7;" title="Decompile binary .wasm or text .wat into visual blocks">
+                <span>📥 Decompile Wasm/WAT</span>
             </button>
             <input type="file" id="file-input-wasm" accept=".wasm,.wat" style="display: none;">
 
-            <button id="btn-clear" title="Limpar Workspace">
-                <span>🗑️ Limpar</span>
+            <button id="btn-clear" title="Clear Workspace">
+                <span>🗑️ Clear</span>
             </button>
         </div>
     </header>
@@ -67,15 +67,15 @@
         <!-- Left: Function Navigator Sidebar (Paging) -->
         <aside class="function-navigator-pane" id="func-navigator">
             <div class="navigator-header">
-                <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">⚡ FUNÇÕES</span>
+                <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">⚡ FUNCTIONS</span>
                 <span id="func-count-badge" class="badge-count">0</span>
             </div>
             <div class="navigator-search">
-                <input type="text" id="func-search-input" placeholder="🔍 Filtrar função...">
+                <input type="text" id="func-search-input" placeholder="🔍 Filter functions...">
             </div>
             <div class="navigator-actions">
-                <button class="nav-btn active" id="btn-view-all" data-view="all">🌐 Ver Todas</button>
-                <button class="nav-btn" id="btn-view-overview" data-view="overview">📋 Módulo / Globais</button>
+                <button class="nav-btn active" id="btn-view-all" data-view="all">🌐 View All</button>
+                <button class="nav-btn" id="btn-view-overview" data-view="overview">📋 Module / Globals</button>
             </div>
             <div class="func-list" id="func-list-container">
                 <!-- Dynamic function items -->
@@ -91,15 +91,15 @@
         <aside class="inspector-pane">
             <nav class="tab-nav">
                 <button class="tab-btn active" data-tab="tab-console">📟 Console</button>
-                <button class="tab-btn" data-tab="tab-wasm">📦 Binário Wasm</button>
+                <button class="tab-btn" data-tab="tab-wasm">📦 Wasm Binary</button>
                 <button class="tab-btn" data-tab="tab-ir">🔍 AST / IR</button>
             </nav>
 
             <!-- Tab 1: Console -->
             <div id="tab-console" class="tab-content active">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span style="color: var(--text-dim); font-weight: bold;">Saída do Runtime Wasm:</span>
-                    <button id="btn-clear-console" style="padding: 2px 6px; font-size: 10px;">Limpar Logs</button>
+                    <span style="color: var(--text-dim); font-weight: bold;">Wasm Runtime Output:</span>
+                    <button id="btn-clear-console" style="padding: 2px 6px; font-size: 10px;">Clear Logs</button>
                 </div>
                 <div id="console-output"></div>
             </div>
@@ -107,39 +107,39 @@
             <!-- Tab 2: Wasm Disassembly / Hex View -->
             <div id="tab-wasm" class="tab-content">
                 <div id="wasm-summary" style="margin-bottom: 8px; color: #55efc4; font-weight: bold;"></div>
-                <div id="wasm-hex" class="code-viewer">Nenhum módulo compilado ainda. Clique em "Compilar".</div>
+                <div id="wasm-hex" class="code-viewer">No module compiled yet. Click "Compile".</div>
             </div>
 
             <!-- Tab 3: AST / IR Debug -->
             <div id="tab-ir" class="tab-content">
-                <div id="ir-viewer" class="code-viewer">Nenhuma IR gerada.</div>
+                <div id="ir-viewer" class="code-viewer">No IR generated.</div>
             </div>
         </aside>
     </main>
 
     <!-- Footer Status -->
     <footer class="chalk-footer">
-        <div id="status-left">⚡ Scratch++ Studio Pronto.</div>
-        <div id="status-right">100% WebAssembly 2.0 • Cobertura Completa de Opcodes</div>
+        <div id="status-left">⚡ Scratch++ Studio Ready.</div>
+        <div id="status-right">100% WebAssembly 2.0 • Full Opcode Coverage</div>
     </footer>
 
     <!-- Toast Notification -->
-    <div id="toast-notification" class="toast">Notificação</div>
+    <div id="toast-notification" class="toast">Notification</div>
 
     <!-- Decompile Progress Overlay Modal -->
     <div id="progress-modal" class="progress-overlay" style="display: none;">
         <div class="progress-card">
-            <div class="progress-title" id="progress-title">⚡ Processando WebAssembly...</div>
+            <div class="progress-title" id="progress-title">⚡ Processing WebAssembly...</div>
             <div class="progress-bar-bg">
                 <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
             </div>
-            <div class="progress-status" id="progress-status">Iniciando...</div>
+            <div class="progress-status" id="progress-status">Starting...</div>
         </div>
     </div>
 
     <!-- Blockly Toolbox XML Definition: 100% WebAssembly Instructions -->
     <xml id="toolbox" style="display: none">
-        <category name="Controle & Fluxo" colour="#d97706">
+        <category name="Control & Flow" colour="#d97706">
             <block type="spp_start"></block>
             <block type="spp_block"></block>
             <block type="spp_loop"></block>
@@ -161,7 +161,7 @@
             <block type="spp_inline_wat"></block>
         </category>
 
-        <category name="i32 (Inteiro 32)" colour="#3b82f6">
+        <category name="i32 (Integer 32)" colour="#3b82f6">
             <block type="spp_const_i32"></block>
             <block type="spp_declare_i32"></block>
             <block type="spp_global_i32"></block>
@@ -174,7 +174,7 @@
             <block type="spp_i32_store"></block>
         </category>
 
-        <category name="i64 (Inteiro 64)" colour="#1d4ed8">
+        <category name="i64 (Integer 64)" colour="#1d4ed8">
             <block type="spp_const_i64"></block>
             <block type="spp_declare_i64"></block>
             <block type="spp_global_i64"></block>
@@ -187,7 +187,7 @@
             <block type="spp_i64_store"></block>
         </category>
 
-        <category name="f32 (Real 32)" colour="#10b981">
+        <category name="f32 (Float 32)" colour="#10b981">
             <block type="spp_const_f32"></block>
             <block type="spp_declare_f32"></block>
             <block type="spp_global_f32"></block>
@@ -200,7 +200,7 @@
             <block type="spp_f32_store"></block>
         </category>
 
-        <category name="f64 (Real 64)" colour="#047857">
+        <category name="f64 (Float 64)" colour="#047857">
             <block type="spp_const_f64"></block>
             <block type="spp_declare_f64"></block>
             <block type="spp_global_f64"></block>
@@ -213,7 +213,7 @@
             <block type="spp_f64_store"></block>
         </category>
 
-        <category name="Conversões & Casts" colour="#059669">
+        <category name="Conversions & Casts" colour="#059669">
             <block type="spp_f32_convert_i32"></block>
             <block type="spp_f64_convert_i32"></block>
             <block type="spp_f64_convert_i64"></block>
@@ -233,7 +233,7 @@
             <block type="spp_reinterpret"></block>
         </category>
 
-        <category name="Memória Linear (Wasm)" colour="#475569">
+        <category name="Linear Memory (Wasm)" colour="#475569">
             <block type="spp_mem_load"></block>
             <block type="spp_mem_store"></block>
             <block type="spp_mem_grow"></block>
@@ -243,7 +243,7 @@
             <block type="spp_param_buffer"></block>
         </category>
 
-        <category name="Funções & Módulos" colour="#9333ea">
+        <category name="Functions & Modules" colour="#9333ea">
             <block type="spp_function_def"></block>
             <block type="spp_param"></block>
             <block type="spp_param_i32"></block>
@@ -261,7 +261,7 @@
             <block type="spp_start_func"></block>
         </category>
 
-        <category name="Variáveis & Atribuição" colour="#3b82f6">
+        <category name="Variables & Assignment" colour="#3b82f6">
             <block type="spp_set"></block>
             <block type="spp_tee"></block>
             <block type="spp_get"></block>
@@ -269,7 +269,7 @@
             <block type="spp_global_declare"></block>
         </category>
 
-        <category name="Booleano, Texto & Host" colour="#8b5cf6">
+        <category name="Boolean, Text & Host" colour="#8b5cf6">
             <block type="spp_const_bool"></block>
             <block type="spp_declare_bool"></block>
             <block type="spp_get_bool"></block>
@@ -291,7 +291,7 @@
             <block type="spp_v128_store"></block>
         </category>
 
-        <category name="Wasm 2.0: Referências & Tabelas" colour="#84cc16">
+        <category name="Wasm 2.0: References & Tables" colour="#84cc16">
             <block type="spp_table_declare"></block>
             <block type="spp_ref_null"></block>
             <block type="spp_ref_is_null"></block>

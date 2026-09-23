@@ -513,10 +513,10 @@ export class ASTToBlocksTranspiler {
                 return `${indent}<block type="spp_string_concat">\n${indent}  <value name="LEFT">\n${this.renderExpression(node.left, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="RIGHT">\n${this.renderExpression(node.right, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
 
             case ASTNodeType.SIGN_EXTEND:
-                return `${indent}<block type="spp_sign_extend">\n${indent}  <field name="FROM_BITS">${node.fromBits}</field>\n${indent}  <field name="TYPE">${node.type}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+                return `${indent}<block type="spp_sign_extend">\n${indent}  <field name="MODE">${node.fromBits}_${node.type}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
 
             case ASTNodeType.TRUNC_SAT:
-                return `${indent}<block type="spp_trunc_sat">\n${indent}  <field name="FROM_TYPE">${node.fromType}</field>\n${indent}  <field name="TO_TYPE">${node.toType}</field>\n${indent}  <field name="SIGNEDNESS">${node.isSigned ? 'signed' : 'unsigned'}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+                return `${indent}<block type="spp_trunc_sat">\n${indent}  <field name="MODE">${node.toType}_${node.fromType}_${node.isSigned ? 's' : 'u'}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
 
             case ASTNodeType.REF_NULL:
                 return `${indent}<block type="spp_ref_null"><field name="TYPE">${node.type}</field></block>`;
@@ -544,11 +544,18 @@ export class ASTToBlocksTranspiler {
             case ASTNodeType.V128_SPLAT:
                 return `${indent}<block type="spp_v128_splat">\n${indent}  <field name="LANE_TYPE">${node.laneType}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
 
-            case ASTNodeType.V128_EXTRACT_LANE:
-                return `${indent}<block type="spp_v128_extract_lane">\n${indent}  <field name="LANE_TYPE">${node.laneType}</field>\n${indent}  <field name="LANE_IDX">${node.laneIndex}</field>\n${indent}  <value name="VECTOR">\n${this.renderExpression(node.vecExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+            case ASTNodeType.V128_EXTRACT_LANE: {
+                let laneType = node.laneType || 'i32x4';
+                if (laneType === 'i8x16') {
+                    laneType = (node.signedness === 'unsigned' || node.isSigned === false) ? 'i8x16_u' : 'i8x16_s';
+                } else if (laneType === 'i16x8') {
+                    laneType = (node.signedness === 'unsigned' || node.isSigned === false) ? 'i16x8_u' : 'i16x8_s';
+                }
+                return `${indent}<block type="spp_v128_extract_lane">\n${indent}  <field name="LANE_TYPE">${laneType}</field>\n${indent}  <field name="LANE_IDX">${node.laneIdx !== undefined ? node.laneIdx : (node.laneIndex || 0)}</field>\n${indent}  <value name="VECTOR">\n${this.renderExpression(node.vecExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+            }
 
             case ASTNodeType.V128_REPLACE_LANE:
-                return `${indent}<block type="spp_v128_replace_lane">\n${indent}  <field name="LANE_TYPE">${node.laneType}</field>\n${indent}  <field name="LANE_IDX">${node.laneIndex}</field>\n${indent}  <value name="VECTOR">\n${this.renderExpression(node.vecExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+                return `${indent}<block type="spp_v128_replace_lane">\n${indent}  <field name="LANE_TYPE">${node.laneType}</field>\n${indent}  <field name="LANE_IDX">${node.laneIdx !== undefined ? node.laneIdx : (node.laneIndex || 0)}</field>\n${indent}  <value name="VECTOR">\n${this.renderExpression(node.vecExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
 
             case ASTNodeType.V128_OP:
                 return `${indent}<block type="spp_v128_binop">\n${indent}  <field name="OP">${this.escape(node.op)}</field>\n${indent}  <value name="LEFT">\n${this.renderExpression(node.operands[0], indent + '    ')}\n${indent}  </value>\n${indent}  <value name="RIGHT">\n${this.renderExpression(node.operands[1], indent + '    ')}\n${indent}  </value>\n${indent}</block>`;

@@ -81,7 +81,7 @@ export class BinaryReader {
     }
 
     u8() {
-        if (this.pos >= this.bytes.length) throw new Error('Fim inesperado dos bytes Wasm.');
+        if (this.pos >= this.bytes.length) throw new Error('Unexpected end of Wasm bytes.');
         return this.bytes[this.pos++];
     }
 
@@ -149,7 +149,7 @@ export class BinaryReader {
     }
 
     bytesSlice(len) {
-        if (this.pos + len > this.bytes.length) throw new Error('Fim inesperado ao ler slice de bytes.');
+        if (this.pos + len > this.bytes.length) throw new Error('Unexpected end while reading byte slice.');
         const slice = this.bytes.slice(this.pos, this.pos + len);
         this.pos += len;
         return slice;
@@ -211,11 +211,11 @@ export class WasmDecoder {
         // Header
         const magic = (reader.u8() << 24) | (reader.u8() << 16) | (reader.u8() << 8) | reader.u8();
         if (magic !== 0x0061736D) {
-            throw new Error('Assinatura mágica Wasm inválida: esperado 0x0061736D (\\0asm).');
+            throw new Error('Invalid Wasm magic signature: expected 0x0061736D (\\0asm).');
         }
         const version = reader.u32();
         if (version !== 1) {
-            throw new Error(`Versão do binário WebAssembly não suportada: ${version}.`);
+            throw new Error(`Unsupported WebAssembly binary version: ${version}.`);
         }
 
         // Section Decoding
@@ -891,11 +891,11 @@ export class WasmDecoder {
                         case 0x12: stack.push(new V128SplatNode('i64x2', pop())); break;
                         case 0x13: stack.push(new V128SplatNode('f32x4', pop())); break;
                         case 0x14: stack.push(new V128SplatNode('f64x2', pop())); break;
-                        case 0x15: stack.push(new V128ExtractLaneNode('i8x16', reader.u8(), 'signed', pop())); break;
-                        case 0x16: stack.push(new V128ExtractLaneNode('i8x16', reader.u8(), 'unsigned', pop())); break;
+                        case 0x15: stack.push(new V128ExtractLaneNode('i8x16_s', reader.u8(), 'signed', pop())); break;
+                        case 0x16: stack.push(new V128ExtractLaneNode('i8x16_u', reader.u8(), 'unsigned', pop())); break;
                         case 0x17: { const idx = reader.u8(); const val = pop(); const vec = pop(); stack.push(new V128ReplaceLaneNode('i8x16', idx, vec, val)); break; }
-                        case 0x18: stack.push(new V128ExtractLaneNode('i16x8', reader.u8(), 'signed', pop())); break;
-                        case 0x19: stack.push(new V128ExtractLaneNode('i16x8', reader.u8(), 'unsigned', pop())); break;
+                        case 0x18: stack.push(new V128ExtractLaneNode('i16x8_s', reader.u8(), 'signed', pop())); break;
+                        case 0x19: stack.push(new V128ExtractLaneNode('i16x8_u', reader.u8(), 'unsigned', pop())); break;
                         case 0x1A: { const idx = reader.u8(); const val = pop(); const vec = pop(); stack.push(new V128ReplaceLaneNode('i16x8', idx, vec, val)); break; }
                         case 0x1B: stack.push(new V128ExtractLaneNode('i32x4', reader.u8(), 'signed', pop())); break;
                         case 0x1C: { const idx = reader.u8(); const val = pop(); const vec = pop(); stack.push(new V128ReplaceLaneNode('i32x4', idx, vec, val)); break; }

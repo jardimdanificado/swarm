@@ -31,7 +31,7 @@ export class Scope {
 
     define(name, type, isGlobal = false, isParam = false, mutable = true) {
         if (this.symbols.has(name)) {
-            throw new TypeError(`Variável "${name}" já declarada neste escopo.`);
+            throw new TypeError(`Variable "${name}" already declared in this scope.`);
         }
         this.symbols.set(name, { type, isGlobal, isParam, mutable });
     }
@@ -110,7 +110,7 @@ export class TypeChecker {
         // 4. Register user defined functions (first pass signatures)
         for (const func of programNode.functions) {
             if (this.functions.has(func.name)) {
-                throw new TypeError(`Função "${func.name}" já declarada.`);
+                throw new TypeError(`Function "${func.name}" already declared.`);
             }
             this.functions.set(func.name, {
                 name: func.name,
@@ -127,7 +127,7 @@ export class TypeChecker {
         for (const globalDecl of programNode.globals) {
             if (globalDecl.initExpr) {
                 globalDecl.initExpr = this.checkNode(globalDecl.initExpr);
-                globalDecl.initExpr = this.coerce(globalDecl.initExpr, globalDecl.type, `inicializador global de "${globalDecl.name}"`);
+                globalDecl.initExpr = this.coerce(globalDecl.initExpr, globalDecl.type, `global initializer for "${globalDecl.name}"`);
             }
             this.globalScope.define(globalDecl.name, globalDecl.type, true, false, globalDecl.mutable);
         }
@@ -236,7 +236,7 @@ export class TypeChecker {
             case ASTNodeType.DECLARE_VAR: {
                 if (node.initExpr) {
                     node.initExpr = this.checkNode(node.initExpr);
-                    node.initExpr = this.coerce(node.initExpr, node.type, `inicialização de "${node.name}"`);
+                    node.initExpr = this.coerce(node.initExpr, node.type, `initialization of "${node.name}"`);
                 }
                 this.currentScope.define(node.name, node.type, node.isGlobal, false, true);
                 node.inferredType = Type.VOID;
@@ -246,7 +246,7 @@ export class TypeChecker {
             case ASTNodeType.GLOBAL_DECLARE: {
                 if (node.initExpr) {
                     node.initExpr = this.checkNode(node.initExpr);
-                    node.initExpr = this.coerce(node.initExpr, node.type, `inicialização global de "${node.name}"`);
+                    node.initExpr = this.coerce(node.initExpr, node.type, `global initialization of "${node.name}"`);
                 }
                 this.globalScope.define(node.name, node.type, true, false, node.mutable);
                 node.inferredType = Type.VOID;
@@ -256,13 +256,13 @@ export class TypeChecker {
             case ASTNodeType.SET_VAR: {
                 const sym = this.currentScope.lookup(node.name);
                 if (!sym) {
-                    throw new TypeError(`Variável não declarada: "${node.name}".`, node);
+                    throw new TypeError(`Undeclared variable: "${node.name}".`, node);
                 }
                 if (!sym.mutable) {
-                    throw new TypeError(`Variável constante "${node.name}" não pode ser modificada.`, node);
+                    throw new TypeError(`Constant variable "${node.name}" cannot be modified.`, node);
                 }
                 node.valueExpr = this.checkNode(node.valueExpr);
-                node.valueExpr = this.coerce(node.valueExpr, sym.type, `atribuição para "${node.name}"`);
+                node.valueExpr = this.coerce(node.valueExpr, sym.type, `assignment to "${node.name}"`);
                 node.inferredType = Type.VOID;
                 return node;
             }
@@ -270,10 +270,10 @@ export class TypeChecker {
             case ASTNodeType.TEE_VAR: {
                 const sym = this.currentScope.lookup(node.name);
                 if (!sym) {
-                    throw new TypeError(`Variável não declarada: "${node.name}".`, node);
+                    throw new TypeError(`Undeclared variable: "${node.name}".`, node);
                 }
                 node.valueExpr = this.checkNode(node.valueExpr);
-                node.valueExpr = this.coerce(node.valueExpr, sym.type, `local.tee para "${node.name}"`);
+                node.valueExpr = this.coerce(node.valueExpr, sym.type, `local.tee for "${node.name}"`);
                 node.inferredType = sym.type;
                 return node;
             }
@@ -281,7 +281,7 @@ export class TypeChecker {
             case ASTNodeType.GET_VAR: {
                 const sym = this.currentScope.lookup(node.name);
                 if (!sym) {
-                    throw new TypeError(`Variável não declarada: "${node.name}".`, node);
+                    throw new TypeError(`Undeclared variable: "${node.name}".`, node);
                 }
                 node.inferredType = sym.type;
                 return node;
@@ -303,16 +303,16 @@ export class TypeChecker {
 
             case ASTNodeType.SELECT: {
                 node.condition = this.checkNode(node.condition);
-                node.condition = this.coerce(node.condition, Type.BOOL, 'condição do select');
+                node.condition = this.coerce(node.condition, Type.BOOL, 'select condition');
                 node.trueExpr = this.checkNode(node.trueExpr);
                 node.falseExpr = this.checkNode(node.falseExpr);
 
                 const commonType = findCommonType(node.trueExpr.inferredType, node.falseExpr.inferredType);
                 if (!commonType) {
-                    throw new TypeError(`Tipos incompatíveis no select: ${node.trueExpr.inferredType} vs ${node.falseExpr.inferredType}`, node);
+                    throw new TypeError(`Incompatible types in select: ${node.trueExpr.inferredType} vs ${node.falseExpr.inferredType}`, node);
                 }
-                node.trueExpr = this.coerce(node.trueExpr, commonType, 'ramo true do select');
-                node.falseExpr = this.coerce(node.falseExpr, commonType, 'ramo false do select');
+                node.trueExpr = this.coerce(node.trueExpr, commonType, 'select true branch');
+                node.falseExpr = this.coerce(node.falseExpr, commonType, 'select false branch');
                 node.inferredType = commonType;
                 return node;
             }
@@ -331,13 +331,13 @@ export class TypeChecker {
 
             case ASTNodeType.BR_IF:
                 node.condition = this.checkNode(node.condition);
-                node.condition = this.coerce(node.condition, Type.BOOL, 'condição do br_if');
+                node.condition = this.coerce(node.condition, Type.BOOL, 'br_if condition');
                 node.inferredType = Type.VOID;
                 return node;
 
             case ASTNodeType.BR_TABLE:
                 node.indexExpr = this.checkNode(node.indexExpr);
-                node.indexExpr = this.coerce(node.indexExpr, Type.I32, 'índice do br_table');
+                node.indexExpr = this.coerce(node.indexExpr, Type.I32, 'br_table index');
                 node.inferredType = Type.VOID;
                 return node;
 
@@ -359,11 +359,11 @@ export class TypeChecker {
 
                 const commonType = findCommonType(typeL, typeR);
                 if (!commonType) {
-                    throw new TypeError(`Tipos incompatíveis para operador "${node.op}": ${typeL} e ${typeR}.`, node);
+                    throw new TypeError(`Incompatible types for operator "${node.op}": ${typeL} and ${typeR}.`, node);
                 }
 
-                node.left = this.coerce(node.left, commonType, `operando esquerdo de ${node.op}`);
-                node.right = this.coerce(node.right, commonType, `operando direito de ${node.op}`);
+                node.left = this.coerce(node.left, commonType, `left operand of ${node.op}`);
+                node.right = this.coerce(node.right, commonType, `right operand of ${node.op}`);
 
                 const isComparison = ['==', '!=', '<', '<=', '>', '>=', '=', '≠', '≤', '≥'].includes(node.op);
                 if (isComparison) {
@@ -379,7 +379,7 @@ export class TypeChecker {
                 if (node.op === 'EQZ' || node.op === 'é zero?') {
                     node.inferredType = Type.BOOL;
                 } else if (node.op === 'NOT') {
-                    node.expr = this.coerce(node.expr, Type.BOOL, 'operador NOT');
+                    node.expr = this.coerce(node.expr, Type.BOOL, 'NOT operator');
                     node.inferredType = Type.BOOL;
                 } else {
                     node.inferredType = node.expr.inferredType;
@@ -401,7 +401,7 @@ export class TypeChecker {
 
             case ASTNodeType.IF: {
                 node.condition = this.checkNode(node.condition);
-                node.condition = this.coerce(node.condition, Type.BOOL, 'condição do SE');
+                node.condition = this.coerce(node.condition, Type.BOOL, 'IF condition');
 
                 for (let i = 0; i < node.thenBranch.length; i++) {
                     node.thenBranch[i] = this.checkNode(node.thenBranch[i]);
@@ -415,7 +415,7 @@ export class TypeChecker {
 
             case ASTNodeType.REPEAT: {
                 node.countExpr = this.checkNode(node.countExpr);
-                node.countExpr = this.coerce(node.countExpr, Type.I32, 'contador do REPITA');
+                node.countExpr = this.coerce(node.countExpr, Type.I32, 'REPEAT count');
 
                 for (let i = 0; i < node.body.length; i++) {
                     node.body[i] = this.checkNode(node.body[i]);
@@ -426,7 +426,7 @@ export class TypeChecker {
 
             case ASTNodeType.WHILE: {
                 node.condition = this.checkNode(node.condition);
-                node.condition = this.coerce(node.condition, Type.BOOL, 'condição do ENQUANTO');
+                node.condition = this.coerce(node.condition, Type.BOOL, 'WHILE condition');
 
                 for (let i = 0; i < node.body.length; i++) {
                     node.body[i] = this.checkNode(node.body[i]);
@@ -445,18 +445,18 @@ export class TypeChecker {
                         }
                     } else if (Array.isArray(expectedType)) {
                         if (!Array.isArray(node.valueExpr) || node.valueExpr.length !== expectedType.length) {
-                            throw new TypeError(`Função "${this.currentFunction.name}" esperava ${expectedType.length} retornos multi-valor.`, node);
+                            throw new TypeError(`Function "${this.currentFunction.name}" expected ${expectedType.length} multi-value returns.`, node);
                         }
                         for (let i = 0; i < expectedType.length; i++) {
                             node.valueExpr[i] = this.checkNode(node.valueExpr[i]);
-                            node.valueExpr[i] = this.coerce(node.valueExpr[i], expectedType[i], `retorno [${i}] de "${this.currentFunction.name}"`);
+                            node.valueExpr[i] = this.coerce(node.valueExpr[i], expectedType[i], `return [${i}] of "${this.currentFunction.name}"`);
                         }
                     } else {
                         if (!node.valueExpr) {
-                            throw new TypeError(`Função "${this.currentFunction.name}" requer retorno do tipo ${expectedType}.`, node);
+                            throw new TypeError(`Function "${this.currentFunction.name}" requires return type ${expectedType}.`, node);
                         }
                         node.valueExpr = this.checkNode(node.valueExpr);
-                        node.valueExpr = this.coerce(node.valueExpr, expectedType, `retorno de "${this.currentFunction.name}"`);
+                        node.valueExpr = this.coerce(node.valueExpr, expectedType, `return of "${this.currentFunction.name}"`);
                     }
                 }
                 node.inferredType = Type.VOID;
@@ -466,20 +466,20 @@ export class TypeChecker {
             case ASTNodeType.CALL: {
                 const func = this.functions.get(node.funcName);
                 if (!func) {
-                    throw new TypeError(`Função "${node.funcName}" não declarada ou importada.`, node);
+                    throw new TypeError(`Function "${node.funcName}" not declared or imported.`, node);
                 }
                 if (func.module === 'host') {
                     this.addHostImportIfNeeded(func.name);
                 }
                 if (node.args.length !== func.params.length) {
                     throw new TypeError(
-                        `Função "${node.funcName}" esperava ${func.params.length} argumentos, recebeu ${node.args.length}.`,
+                        `Function "${node.funcName}" expected ${func.params.length} arguments, received ${node.args.length}.`,
                         node
                     );
                 }
                 for (let i = 0; i < node.args.length; i++) {
                     node.args[i] = this.checkNode(node.args[i]);
-                    node.args[i] = this.coerce(node.args[i], func.params[i].type, `argumento ${i + 1} de "${node.funcName}"`);
+                    node.args[i] = this.coerce(node.args[i], func.params[i].type, `argument ${i + 1} of "${node.funcName}"`);
                 }
                 node.inferredType = func.returnType || Type.VOID;
                 return node;
@@ -487,17 +487,17 @@ export class TypeChecker {
 
             case ASTNodeType.CALL_INDIRECT: {
                 node.funcIndexExpr = this.checkNode(node.funcIndexExpr);
-                node.funcIndexExpr = this.coerce(node.funcIndexExpr, Type.I32, 'índice de função indireta');
+                node.funcIndexExpr = this.coerce(node.funcIndexExpr, Type.I32, 'indirect function index');
 
                 if (node.args.length !== node.paramTypes.length) {
                     throw new TypeError(
-                        `Chamada indireta esperava ${node.paramTypes.length} argumentos, recebeu ${node.args.length}.`,
+                        `Indirect call expected ${node.paramTypes.length} arguments, received ${node.args.length}.`,
                         node
                     );
                 }
                 for (let i = 0; i < node.args.length; i++) {
                     node.args[i] = this.checkNode(node.args[i]);
-                    node.args[i] = this.coerce(node.args[i], node.paramTypes[i], `argumento ${i + 1} de chamada indireta`);
+                    node.args[i] = this.coerce(node.args[i], node.paramTypes[i], `argument ${i + 1} of indirect call`);
                 }
                 node.inferredType = node.returnType || Type.VOID;
                 return node;
@@ -505,10 +505,10 @@ export class TypeChecker {
 
             case ASTNodeType.RETURN_CALL: {
                 const func = this.functions.get(node.funcName);
-                if (!func) throw new TypeError(`Função "${node.funcName}" não declarada para return_call.`, node);
+                if (!func) throw new TypeError(`Function "${node.funcName}" not declared for return_call.`, node);
                 for (let i = 0; i < node.args.length; i++) {
                     node.args[i] = this.checkNode(node.args[i]);
-                    node.args[i] = this.coerce(node.args[i], func.params[i].type, `argumento de return_call`);
+                    node.args[i] = this.coerce(node.args[i], func.params[i].type, `argument of return_call`);
                 }
                 node.inferredType = func.returnType || Type.VOID;
                 return node;
@@ -516,10 +516,10 @@ export class TypeChecker {
 
             case ASTNodeType.RETURN_CALL_INDIRECT: {
                 node.funcIndexExpr = this.checkNode(node.funcIndexExpr);
-                node.funcIndexExpr = this.coerce(node.funcIndexExpr, Type.I32, 'índice de return_call_indirect');
+                node.funcIndexExpr = this.coerce(node.funcIndexExpr, Type.I32, 'return_call_indirect index');
                 for (let i = 0; i < node.args.length; i++) {
                     node.args[i] = this.checkNode(node.args[i]);
-                    node.args[i] = this.coerce(node.args[i], node.paramTypes[i], `argumento de return_call_indirect`);
+                    node.args[i] = this.coerce(node.args[i], node.paramTypes[i], `argument of return_call_indirect`);
                 }
                 node.inferredType = node.returnType || Type.VOID;
                 return node;
@@ -541,13 +541,13 @@ export class TypeChecker {
 
             case ASTNodeType.TABLE_GET:
                 node.idxExpr = this.checkNode(node.idxExpr);
-                node.idxExpr = this.coerce(node.idxExpr, Type.I32, 'table.get índice');
+                node.idxExpr = this.coerce(node.idxExpr, Type.I32, 'table.get index');
                 node.inferredType = Type.FUNCREF;
                 return node;
 
             case ASTNodeType.TABLE_SET:
                 node.idxExpr = this.checkNode(node.idxExpr);
-                node.idxExpr = this.coerce(node.idxExpr, Type.I32, 'table.set índice');
+                node.idxExpr = this.coerce(node.idxExpr, Type.I32, 'table.set index');
                 node.valExpr = this.checkNode(node.valExpr);
                 node.inferredType = Type.VOID;
                 return node;
@@ -689,25 +689,25 @@ export class TypeChecker {
 
             case ASTNodeType.ALLOC_BUFFER: {
                 node.sizeExpr = this.checkNode(node.sizeExpr);
-                node.sizeExpr = this.coerce(node.sizeExpr, Type.I32, 'tamanho do buffer');
+                node.sizeExpr = this.coerce(node.sizeExpr, Type.I32, 'buffer size');
                 node.inferredType = Type.BUFFER;
                 return node;
             }
 
             case ASTNodeType.MEM_LOAD: {
                 node.bufferExpr = this.checkNode(node.bufferExpr);
-                node.bufferExpr = this.coerce(node.bufferExpr, Type.BUFFER, 'endereço de leitura');
+                node.bufferExpr = this.coerce(node.bufferExpr, Type.BUFFER, 'read address');
                 node.offsetExpr = this.checkNode(node.offsetExpr);
-                node.offsetExpr = this.coerce(node.offsetExpr, Type.I32, 'offset dinâmico');
+                node.offsetExpr = this.coerce(node.offsetExpr, Type.I32, 'dynamic offset');
                 node.inferredType = node.type;
                 return node;
             }
 
             case ASTNodeType.MEM_STORE: {
                 node.bufferExpr = this.checkNode(node.bufferExpr);
-                node.bufferExpr = this.coerce(node.bufferExpr, Type.BUFFER, 'endereço de escrita');
+                node.bufferExpr = this.coerce(node.bufferExpr, Type.BUFFER, 'write address');
                 node.offsetExpr = this.checkNode(node.offsetExpr);
-                node.offsetExpr = this.coerce(node.offsetExpr, Type.I32, 'offset dinâmico');
+                node.offsetExpr = this.coerce(node.offsetExpr, Type.I32, 'dynamic offset');
                 node.valueExpr = this.checkNode(node.valueExpr);
                 node.inferredType = Type.VOID;
                 return node;
@@ -715,7 +715,7 @@ export class TypeChecker {
 
             case ASTNodeType.MEM_GROW: {
                 node.pagesExpr = this.checkNode(node.pagesExpr);
-                node.pagesExpr = this.coerce(node.pagesExpr, Type.I32, 'páginas de memória');
+                node.pagesExpr = this.coerce(node.pagesExpr, Type.I32, 'memory pages');
                 node.inferredType = Type.I32;
                 return node;
             }
@@ -727,16 +727,16 @@ export class TypeChecker {
 
             case ASTNodeType.STRING_CONCAT: {
                 node.left = this.checkNode(node.left);
-                node.left = this.coerce(node.left, Type.TEXTO, 'concatenação esquerda');
+                node.left = this.coerce(node.left, Type.TEXTO, 'left concatenation');
                 node.right = this.checkNode(node.right);
-                node.right = this.coerce(node.right, Type.TEXTO, 'concatenação direita');
+                node.right = this.coerce(node.right, Type.TEXTO, 'right concatenation');
                 node.inferredType = Type.TEXTO;
                 return node;
             }
 
             case ASTNodeType.STRING_LEN: {
                 node.strExpr = this.checkNode(node.strExpr);
-                node.strExpr = this.coerce(node.strExpr, Type.TEXTO, 'tamanho de texto');
+                node.strExpr = this.coerce(node.strExpr, Type.TEXTO, 'string length');
                 node.inferredType = Type.I32;
                 return node;
             }
@@ -870,7 +870,7 @@ export class TypeChecker {
         }
 
         throw new TypeError(
-            `Tipo incompatível em ${context}: esperado "${targetType}", recebido "${fromType}". Narrowing explícito necessário.`,
+            `Type mismatch in ${context}: expected "${targetType}", received "${fromType}". Explicit narrowing required.`,
             exprNode
         );
     }

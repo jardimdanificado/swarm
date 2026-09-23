@@ -56,11 +56,11 @@ export class ScratchRuntime {
 
     run(funcName = '__main__', ...args) {
         if (!this.wasmInstance) {
-            throw new Error('Módulo Wasm não instanciado no runtime.');
+            throw new Error('Wasm module not instantiated in runtime.');
         }
         const fn = this.wasmInstance.exports[funcName];
         if (typeof fn !== 'function') {
-            throw new Error(`Função exportada "${funcName}" não encontrada no módulo Wasm.`);
+            throw new Error(`Exported function "${funcName}" not found in Wasm module.`);
         }
         const startTime = performance.now();
         const result = fn(...args);

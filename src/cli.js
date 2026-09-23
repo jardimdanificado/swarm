@@ -13,8 +13,8 @@ const args = process.argv.slice(2);
 if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
     console.log(`
 Scratch++ CLI Compiler
-Uso:
-  node src/cli.js <arquivo.spp> -o <saida.wasm>
+Usage:
+  node src/cli.js <input.spp> -o <output.wasm>
   node src/cli.js --test
 `);
     process.exit(0);
@@ -33,7 +33,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 if (!inputFile) {
-    console.error('Erro: Arquivo de entrada não especificado.');
+    console.error('Error: No input file specified.');
     process.exit(1);
 }
 
@@ -41,12 +41,12 @@ try {
     const rawData = fs.readFileSync(inputFile, 'utf-8');
     const project = JSON.parse(rawData);
 
-    console.log(`[Scratch++] Compilando projeto "${project.name || inputFile}"...`);
-    // Compilação via AST
-    console.log(`[Scratch++] Gerando binário WebAssembly em "${outputFile}"...`);
-    // Finalização de build CLI
-    console.log(`✅ Build concluído com sucesso!`);
+    console.log(`[Scratch++] Compiling project "${project.name || inputFile}"...`);
+    // Compilation via AST
+    console.log(`[Scratch++] Generating WebAssembly binary in "${outputFile}"...`);
+    // CLI build finish
+    console.log(`✅ Build completed successfully!`);
 } catch (err) {
-    console.error(`❌ Erro no build:`, err.message);
+    console.error(`❌ Build error:`, err.message);
     process.exit(1);
 }

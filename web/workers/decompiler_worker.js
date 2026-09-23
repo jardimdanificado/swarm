@@ -12,17 +12,17 @@ self.onmessage = async function(e) {
 
     try {
         if (action === 'decompile_wasm') {
-            self.postMessage({ type: 'progress', percent: 10, message: 'Decodificando seções binárias Wasm...' });
+            self.postMessage({ type: 'progress', percent: 10, message: 'Decoding Wasm binary sections...' });
             
             const uint8Array = new Uint8Array(buffer);
             const decoder = new WasmDecoder();
             
             const ast = decoder.decode(uint8Array);
-            self.postMessage({ type: 'progress', percent: 60, message: 'Construindo árvore AST e mapeando funções...' });
+            self.postMessage({ type: 'progress', percent: 60, message: 'Building AST and mapping functions...' });
 
             const transpiler = new ASTToBlocksTranspiler();
             const xml = transpiler.transpile(ast);
-            self.postMessage({ type: 'progress', percent: 90, message: 'Gerando blocos visuais...' });
+            self.postMessage({ type: 'progress', percent: 90, message: 'Generating visual blocks...' });
 
             const functionsList = (ast.functions || []).map((f, idx) => ({
                 id: `func_${idx}`,
@@ -40,12 +40,12 @@ self.onmessage = async function(e) {
                 fileName: fileName
             });
         } else if (action === 'decompile_wat') {
-            self.postMessage({ type: 'progress', percent: 20, message: 'Analisando texto WAT / S-Expressions...' });
+            self.postMessage({ type: 'progress', percent: 20, message: 'Parsing WAT / S-Expressions text...' });
             
             const parser = new WatParser();
             const ast = parser.parse(watText);
             
-            self.postMessage({ type: 'progress', percent: 65, message: 'Mapeando símbolos e gerando blocos...' });
+            self.postMessage({ type: 'progress', percent: 65, message: 'Resolving symbols and generating blocks...' });
             const transpiler = new ASTToBlocksTranspiler();
             const xml = transpiler.transpile(ast);
 

@@ -23,7 +23,7 @@ export const TYPE_METADATA = {
         wasmType: 'i32',
         wasmByte: 0x7F,
         color: '#3b82f6', // Light Blue
-        label: 'i32 (inteiro 32)',
+        label: 'i32 (32-bit integer)',
         isNumeric: true,
         isInteger: true
     },
@@ -31,7 +31,7 @@ export const TYPE_METADATA = {
         wasmType: 'i64',
         wasmByte: 0x7E,
         color: '#1d4ed8', // Dark Blue
-        label: 'i64 (inteiro 64)',
+        label: 'i64 (64-bit integer)',
         isNumeric: true,
         isInteger: true
     },
@@ -39,7 +39,7 @@ export const TYPE_METADATA = {
         wasmType: 'f32',
         wasmByte: 0x7D,
         color: '#10b981', // Light Green
-        label: 'f32 (real 32)',
+        label: 'f32 (32-bit float)',
         isNumeric: true,
         isFloat: true
     },
@@ -47,7 +47,7 @@ export const TYPE_METADATA = {
         wasmType: 'f64',
         wasmByte: 0x7C,
         color: '#047857', // Dark Green
-        label: 'f64 (real 64)',
+        label: 'f64 (64-bit float)',
         isNumeric: true,
         isFloat: true
     },
@@ -55,14 +55,14 @@ export const TYPE_METADATA = {
         wasmType: 'v128',
         wasmByte: 0x7B,
         color: '#ec4899', // Pink / Vector
-        label: 'v128 (vetor SIMD 128-bit)',
+        label: 'v128 (128-bit SIMD vector)',
         isVector: true
     },
     [Type.FUNCREF]: {
         wasmType: 'funcref',
         wasmByte: 0x70,
         color: '#eab308', // Yellow
-        label: 'funcref (referência de função)',
+        label: 'funcref (function reference)',
         isReference: true,
         isFunction: true
     },
@@ -70,14 +70,14 @@ export const TYPE_METADATA = {
         wasmType: 'externref',
         wasmByte: 0x6F,
         color: '#a855f7', // Violet
-        label: 'externref (referência externa host/JS)',
+        label: 'externref (host/JS external reference)',
         isReference: true
     },
     [Type.BOOL]: {
         wasmType: 'i32',
         wasmByte: 0x7F,
         color: '#f97316', // Orange
-        label: 'bool (lógico)',
+        label: 'bool (boolean)',
         isBoolean: true
     },
     [Type.TEXTO]: {
@@ -91,21 +91,21 @@ export const TYPE_METADATA = {
         wasmType: 'i32', // Pointer to memory
         wasmByte: 0x7F,
         color: '#6b7280', // Gray
-        label: 'buffer (memória)',
+        label: 'buffer (memory)',
         isPointer: true
     },
     [Type.FUNCAO]: {
         wasmType: 'funcref',
         wasmByte: 0x70,
         color: '#eab308', // Yellow
-        label: 'função (referência)',
+        label: 'função (function reference)',
         isFunction: true
     },
     [Type.VOID]: {
         wasmType: null,
         wasmByte: 0x40, // Block empty result
         color: '#475569',
-        label: 'vazio'
+        label: 'void'
     }
 };
 

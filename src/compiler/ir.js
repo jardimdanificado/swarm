@@ -844,10 +844,13 @@ export class ASTToLowerer {
 
             case ASTNodeType.V128_EXTRACT_LANE: {
                 const vecIr = this.lowerNode(node.vecExpr);
-                return new IRNode(IROp.V128_EXTRACT_LANE, node.laneType.startsWith('f') ? 'f64' : 'i32', [vecIr], {
-                    laneType: node.laneType,
-                    laneIdx: node.laneIdx,
-                    signed: node.signedness !== 'unsigned'
+                const rawType = node.laneType || 'i32x4';
+                const baseType = rawType.startsWith('i8x16') ? 'i8x16' : (rawType.startsWith('i16x8') ? 'i16x8' : rawType);
+                const isSigned = rawType.endsWith('_u') ? false : (node.signedness !== 'unsigned');
+                return new IRNode(IROp.V128_EXTRACT_LANE, baseType.startsWith('f') ? 'f64' : 'i32', [vecIr], {
+                    laneType: baseType,
+                    laneIdx: node.laneIdx !== undefined ? node.laneIdx : (node.laneIndex || 0),
+                    signed: isSigned
                 });
             }
 

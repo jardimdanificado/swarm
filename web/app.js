@@ -117,16 +117,16 @@ function updateTabUI(tabId) {
         const wasmHex = document.getElementById('wasm-hex');
         if (wasmSummary && wasmHex) {
             if (lastCompiledWasm) {
-                wasmSummary.textContent = `Tamanho: ${lastCompiledWasm.length} bytes • Seções Wasm geradas com sucesso.`;
+                wasmSummary.textContent = `Size: ${lastCompiledWasm.length} bytes • Wasm sections generated successfully.`;
                 if (lastCompiledWasm.length > 65536) {
                     const slice = lastCompiledWasm.subarray(0, 65536);
-                    wasmHex.textContent = formatHexDump(slice) + `\n... [Visualização truncada em 64KB (${lastCompiledWasm.length} bytes totais). Exporte o .wasm para ver o arquivo completo]`;
+                    wasmHex.textContent = formatHexDump(slice) + `\n... [View truncated at 64KB (${lastCompiledWasm.length} bytes total). Export the .wasm to see the full file]`;
                 } else {
                     wasmHex.textContent = formatHexDump(lastCompiledWasm);
                 }
             } else {
                 wasmSummary.textContent = '';
-                wasmHex.textContent = 'Nenhum módulo compilado ainda. Clique em "Compilar".';
+                wasmHex.textContent = 'No module compiled yet. Click "Compile".';
             }
         }
     } else if (tabId === 'tab-ir') {
@@ -140,12 +140,12 @@ function updateTabUI(tabId) {
                 };
                 const jsonStr = JSON.stringify(irData, (key, val) => typeof val === 'bigint' ? val.toString() + 'n' : val, 2);
                 if (jsonStr.length > 100000) {
-                    irViewer.textContent = jsonStr.slice(0, 100000) + '\n\n... [Visualização truncada para otimização de renderização]';
+                    irViewer.textContent = jsonStr.slice(0, 100000) + '\n\n... [View truncated for rendering performance]';
                 } else {
                     irViewer.textContent = jsonStr;
                 }
             } else {
-                irViewer.textContent = 'Nenhuma IR gerada.';
+                irViewer.textContent = 'No IR generated.';
             }
         }
     }
@@ -169,18 +169,18 @@ function compileWorkspace(silent = false) {
 
         const statusLeft = document.getElementById('status-left');
         if (statusLeft) {
-            statusLeft.textContent = `⚡ Compilação OK: ${lastCompiledWasm.length} bytes Wasm`;
+            statusLeft.textContent = `⚡ Compilation OK: ${lastCompiledWasm.length} bytes Wasm`;
         }
 
         return compileResult;
     } catch (err) {
         if (!silent) {
-            console.error('Erro na compilação:', err);
-            appendConsole(`[Erro de Compilação] ${err.message}`, 'error');
+            console.error('Compilation error:', err);
+            appendConsole(`[Compilation Error] ${err.message}`, 'error');
             showToast(err.message, 'error');
         }
         const statusLeft = document.getElementById('status-left');
-        if (statusLeft) statusLeft.textContent = `⚠️ Compilação: ${err.message}`;
+        if (statusLeft) statusLeft.textContent = `⚠️ Compilation: ${err.message}`;
         return null;
     }
 }
@@ -196,16 +196,16 @@ async function executeProgram() {
     isRunning = true;
     if (btnRun) btnRun.classList.add('running');
 
-    appendConsole('--- Iniciando Execução Wasm ---', 'system');
+    appendConsole('--- Starting Wasm Execution ---', 'system');
 
     try {
         await runtime.instantiate(lastCompiledWasm);
         const res = runtime.run('__main__');
 
-        appendConsole(`--- Execução Concluída em ${res.durationMs.toFixed(2)}ms ---`, 'system');
-        showToast(`Executado com sucesso (${res.durationMs.toFixed(2)}ms)!`, 'success');
+        appendConsole(`--- Execution Finished in ${res.durationMs.toFixed(2)}ms ---`, 'system');
+        showToast(`Executed successfully (${res.durationMs.toFixed(2)}ms)!`, 'success');
     } catch (err) {
-        console.error('Erro na execução:', err);
+        console.error('Runtime error:', err);
         appendConsole(`[Runtime Error] ${err.message}`, 'error');
         showToast(err.message, 'error');
     } finally {
@@ -297,7 +297,7 @@ function loadExample(exampleId) {
     if (!example || !workspace) return;
 
     loadXmlToWorkspace(example.xml);
-    showToast(`Exemplo "${example.name}" carregado.`, 'success');
+    showToast(`Example "${example.name}" loaded.`, 'success');
     compileWorkspace();
 }
 
@@ -307,7 +307,7 @@ function exportSppProject() {
     const xmlText = transpiler.transpile(ast);
 
     const projectData = {
-        name: 'Projeto Scratch++',
+        name: 'Scratch++ Project',
         version: '2.0.0',
         xml: xmlText
     };
@@ -316,10 +316,10 @@ function exportSppProject() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'projeto.spp';
+    a.download = 'project.spp';
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Projeto .spp exportado!', 'success');
+    showToast('Project .spp exported!', 'success');
 }
 
 function exportWasmBinary() {
@@ -327,7 +327,7 @@ function exportWasmBinary() {
         compileWorkspace();
     }
     if (!lastCompiledWasm) {
-        showToast('Nenhum binário Wasm disponível. Corrija os erros.', 'error');
+        showToast('No Wasm binary available. Fix errors first.', 'error');
         return;
     }
 
@@ -335,10 +335,10 @@ function exportWasmBinary() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'projeto.wasm';
+    a.download = 'project.wasm';
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Binário .wasm exportado!', 'success');
+    showToast('Binary .wasm exported!', 'success');
 }
 
 /* =========================================================================
@@ -373,7 +373,7 @@ window.addEventListener('DOMContentLoaded', () => {
         decompilerWorker.onmessage = (e) => {
             const data = e.data;
             if (data.type === 'progress') {
-                showProgressModal('⚡ Descompilando WebAssembly...', data.percent, data.message);
+                showProgressModal('⚡ Decompiling WebAssembly...', data.percent, data.message);
             } else if (data.type === 'complete') {
                 hideProgressModal();
                 const initialView = (data.functionsList && data.functionsList.length > 8) ? 0 : 'all';
@@ -387,16 +387,16 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (items[0]) items[0].classList.add('active');
                 }
 
-                showToast(`Arquivo "${data.fileName}" descompilado (${data.functionsList?.length || 0} funções)!`, 'success');
+                showToast(`File "${data.fileName}" decompiled (${data.functionsList?.length || 0} functions)!`, 'success');
                 compileWorkspace();
             } else if (data.type === 'error') {
                 hideProgressModal();
-                console.error('Erro no Worker:', data);
-                showToast(`Erro na descompilação: ${data.message}`, 'error');
+                console.error('Worker error:', data);
+                showToast(`Decompilation error: ${data.message}`, 'error');
             }
         };
     } catch (err) {
-        console.warn('Web Worker não pôde ser iniciado, usando modo síncrono inline.', err);
+        console.warn('Web Worker could not be started, using fallback inline mode.', err);
     }
 
     // 5. Setup Navigator UI Listeners
@@ -447,7 +447,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const btnCompile = document.getElementById('btn-compile');
     if (btnCompile) btnCompile.addEventListener('click', () => {
         compileWorkspace();
-        showToast('Compilação concluída!', 'success');
+        showToast('Compilation completed!', 'success');
     });
 
     const btnExportWasm = document.getElementById('btn-export-wasm');
@@ -469,11 +469,11 @@ window.addEventListener('DOMContentLoaded', () => {
                     const data = JSON.parse(evt.target.result);
                     if (data.xml) {
                         loadXmlToWorkspace(data.xml);
-                        showToast(`Projeto "${data.name || file.name}" carregado.`, 'success');
+                        showToast(`Project "${data.name || file.name}" loaded.`, 'success');
                         compileWorkspace();
                     }
                 } catch (err) {
-                    showToast('Arquivo .spp inválido.', 'error');
+                    showToast('Invalid .spp file.', 'error');
                 }
             };
             reader.readAsText(file);
@@ -499,7 +499,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (evt) => {
                     const watText = evt.target.result;
                     if (decompilerWorker) {
-                        showProgressModal('⚡ Descompilando WAT...', 5, 'Enviando para thread worker...');
+                        showProgressModal('⚡ Decompiling WAT...', 5, 'Sending to worker thread...');
                         decompilerWorker.postMessage({
                             action: 'decompile_wat',
                             watText: watText,
@@ -514,11 +514,11 @@ window.addEventListener('DOMContentLoaded', () => {
                             if (initialView === 'all') {
                                 document.getElementById('btn-view-all')?.classList.add('active');
                             }
-                            showToast(`WAT "${file.name}" descompilado com sucesso!`, 'success');
+                            showToast(`WAT "${file.name}" decompiled successfully!`, 'success');
                             compileWorkspace();
                         } catch (err) {
-                            console.error('Erro ao descompilar WAT:', err);
-                            showToast(`Erro ao descompilar WAT: ${err.message}`, 'error');
+                            console.error('Error decompiling WAT:', err);
+                            showToast(`Error decompiling WAT: ${err.message}`, 'error');
                         }
                     }
                 };
@@ -527,7 +527,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (evt) => {
                     const buffer = evt.target.result;
                     if (decompilerWorker) {
-                        showProgressModal('⚡ Descompilando .wasm...', 5, 'Enviando para thread worker...');
+                        showProgressModal('⚡ Decompiling .wasm...', 5, 'Sending to worker thread...');
                         decompilerWorker.postMessage({
                             action: 'decompile_wasm',
                             buffer: buffer,
@@ -543,11 +543,11 @@ window.addEventListener('DOMContentLoaded', () => {
                             if (initialView === 'all') {
                                 document.getElementById('btn-view-all')?.classList.add('active');
                             }
-                            showToast(`Binário .wasm "${file.name}" descompilado com sucesso!`, 'success');
+                            showToast(`Wasm binary "${file.name}" decompiled successfully!`, 'success');
                             compileWorkspace();
                         } catch (err) {
-                            console.error('Erro ao descompilar .wasm:', err);
-                            showToast(`Erro ao descompilar .wasm: ${err.message}`, 'error');
+                            console.error('Error decompiling .wasm:', err);
+                            showToast(`Error decompiling .wasm: ${err.message}`, 'error');
                         }
                     }
                 };
@@ -560,7 +560,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (btnClear) btnClear.addEventListener('click', () => {
         workspace.clear();
         clearConsole();
-        showToast('Workspace limpo.', 'warn');
+        showToast('Workspace cleared.', 'warn');
     });
 
     const btnClearConsole = document.getElementById('btn-clear-console');
