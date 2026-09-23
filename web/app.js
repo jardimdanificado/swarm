@@ -458,7 +458,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 4. Initialize Background Decompiler Web Worker
     try {
-        decompilerWorker = new Worker('./workers/decompiler_worker.js', { type: 'module' });
+        decompilerWorker = new Worker(new URL('./workers/decompiler_worker.js', import.meta.url), { type: 'module' });
         decompilerWorker.onmessage = (e) => {
             const data = e.data;
             if (data.type === 'progress') {
