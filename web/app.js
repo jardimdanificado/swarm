@@ -152,6 +152,29 @@ function updateTabUI(tabId) {
 }
 
 /* =========================================================================
+ * Mobile View Switcher
+ * ========================================================================= */
+function setMobileView(viewName) {
+    const mobileBtns = document.querySelectorAll('.mobile-tab-btn');
+    mobileBtns.forEach(btn => {
+        if (btn.getAttribute('data-mobile-view') === viewName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    document.body.classList.remove('mobile-view-nav', 'mobile-view-editor', 'mobile-view-inspector');
+    document.body.classList.add(`mobile-view-${viewName}`);
+
+    if (viewName === 'editor' && workspace) {
+        setTimeout(() => Blockly.svgResize(workspace), 50);
+    } else if (viewName === 'inspector') {
+        updateTabUI(activeTab);
+    }
+}
+
+/* =========================================================================
  * Compilation Pipeline
  * ========================================================================= */
 function compileWorkspace(silent = false) {
@@ -169,7 +192,7 @@ function compileWorkspace(silent = false) {
 
         const statusLeft = document.getElementById('status-left');
         if (statusLeft) {
-            statusLeft.textContent = `⚡ Compilation OK: ${lastCompiledWasm.length} bytes Wasm`;
+            statusLeft.textContent = `🐜 Compilation OK: ${lastCompiledWasm.length} bytes Wasm`;
         }
 
         return compileResult;
@@ -266,6 +289,7 @@ function updateNavigatorUI(functionsList) {
             document.querySelectorAll('.nav-btn, .func-item').forEach(el => el.classList.remove('active'));
             item.classList.add('active');
             projectManager.loadView(fn.index);
+            setMobileView('editor');
         });
         container.appendChild(item);
     });
@@ -307,7 +331,7 @@ function exportSppProject() {
     const xmlText = transpiler.transpile(ast);
 
     const projectData = {
-        name: 'Scratch++ Project',
+        name: 'swarm Project',
         version: '2.0.0',
         xml: xmlText
     };
@@ -373,7 +397,7 @@ window.addEventListener('DOMContentLoaded', () => {
         decompilerWorker.onmessage = (e) => {
             const data = e.data;
             if (data.type === 'progress') {
-                showProgressModal('⚡ Decompiling WebAssembly...', data.percent, data.message);
+                showProgressModal('🐜 Decompiling WebAssembly...', data.percent, data.message);
             } else if (data.type === 'complete') {
                 hideProgressModal();
                 const initialView = (data.functionsList && data.functionsList.length > 8) ? 0 : 'all';
@@ -499,7 +523,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (evt) => {
                     const watText = evt.target.result;
                     if (decompilerWorker) {
-                        showProgressModal('⚡ Decompiling WAT...', 5, 'Sending to worker thread...');
+                        showProgressModal('🐜 Decompiling WAT...', 5, 'Sending to worker thread...');
                         decompilerWorker.postMessage({
                             action: 'decompile_wat',
                             watText: watText,
@@ -527,7 +551,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (evt) => {
                     const buffer = evt.target.result;
                     if (decompilerWorker) {
-                        showProgressModal('⚡ Decompiling .wasm...', 5, 'Sending to worker thread...');
+                        showProgressModal('🐜 Decompiling .wasm...', 5, 'Sending to worker thread...');
                         decompilerWorker.postMessage({
                             action: 'decompile_wasm',
                             buffer: buffer,
@@ -566,7 +590,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const btnClearConsole = document.getElementById('btn-clear-console');
     if (btnClearConsole) btnClearConsole.addEventListener('click', clearConsole);
 
-    // 8. Tab Navigation
+    // 8. Tab Navigation (Desktop Inspector Tabs)
     const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -582,7 +606,25 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 9. Keyboard Shortcuts
+    // 9. Mobile Bottom Bar Navigation
+    const mobileTabBtns = document.querySelectorAll('.mobile-tab-btn');
+    mobileTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const view = btn.getAttribute('data-mobile-view');
+            if (view) setMobileView(view);
+        });
+    });
+
+    window.addEventListener('resize', () => {
+        if (workspace) Blockly.svgResize(workspace);
+    });
+    window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+            if (workspace) Blockly.svgResize(workspace);
+        }, 100);
+    });
+
+    // 10. Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' && (e.target === document.body || e.target === document.documentElement)) {
             e.preventDefault();

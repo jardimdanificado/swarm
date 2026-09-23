@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scratch++ // WebAssembly 2.0 Studio (Swarm)</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <title>swarm // WebAssembly 2.0 Studio</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐜</text></svg>">
     <link rel="stylesheet" href="style.css">
     <script src="vendor/blockly.min.js"></script>
 </head>
-<body>
+<body class="mobile-view-editor">
 
     <!-- Header Toolbar -->
     <header>
         <h1>
-            <span>⚡ Scratch++</span>
-            <span class="badge-wasm">WASM 2.0 (100% SPEC)</span>
+            <span>🐜 swarm</span>
         </h1>
 
         <div class="actions">
@@ -67,7 +66,7 @@
         <!-- Left: Function Navigator Sidebar (Paging) -->
         <aside class="function-navigator-pane" id="func-navigator">
             <div class="navigator-header">
-                <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">⚡ FUNCTIONS</span>
+                <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">🐜 FUNCTIONS</span>
                 <span id="func-count-badge" class="badge-count">0</span>
             </div>
             <div class="navigator-search">
@@ -117,9 +116,25 @@
         </aside>
     </main>
 
+    <!-- Mobile Bottom Navigation Bar (Active on Mobile / Small Screens) -->
+    <nav class="mobile-tab-bar" id="mobile-tab-bar">
+        <button class="mobile-tab-btn" data-mobile-view="nav" title="Functions Navigator">
+            <span class="mobile-tab-icon">📁</span>
+            <span class="mobile-tab-label">Functions</span>
+        </button>
+        <button class="mobile-tab-btn active" data-mobile-view="editor" title="Blocks Workspace">
+            <span class="mobile-tab-icon">🧱</span>
+            <span class="mobile-tab-label">Blocks</span>
+        </button>
+        <button class="mobile-tab-btn" data-mobile-view="inspector" title="Console & Output">
+            <span class="mobile-tab-icon">📟</span>
+            <span class="mobile-tab-label">Output</span>
+        </button>
+    </nav>
+
     <!-- Footer Status -->
     <footer class="chalk-footer">
-        <div id="status-left">⚡ Scratch++ Studio Ready.</div>
+        <div id="status-left">🐜 swarm Studio Ready.</div>
         <div id="status-right">100% WebAssembly 2.0 • Full Opcode Coverage</div>
     </footer>
 
@@ -129,7 +144,7 @@
     <!-- Decompile Progress Overlay Modal -->
     <div id="progress-modal" class="progress-overlay" style="display: none;">
         <div class="progress-card">
-            <div class="progress-title" id="progress-title">⚡ Processing WebAssembly...</div>
+            <div class="progress-title" id="progress-title">🐜 Processing WebAssembly...</div>
             <div class="progress-bar-bg">
                 <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
             </div>

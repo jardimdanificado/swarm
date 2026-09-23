@@ -1,5 +1,5 @@
 /**
- * Scratch++ (Swarm) Web Studio Stylesheet
+ * swarm Web Studio Stylesheet
  * Chalkboard Dark Aesthetic matching Brack Modular Synthesizer Studio
  */
 
@@ -580,5 +580,162 @@ button.btn-accent:hover {
 .progress-status {
     font-size: 11px;
     color: var(--text-dim);
+}
+
+/* =========================================================================
+ * Mobile Navigation Bar & Responsive Styles
+ * ========================================================================= */
+.mobile-tab-bar {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    header {
+        height: 48px;
+        padding: 0 8px;
+        gap: 6px;
+    }
+
+    h1 {
+        font-size: 13px;
+        letter-spacing: 0.5px;
+        flex-shrink: 0;
+    }
+
+    .actions {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 4px 0;
+        gap: 6px;
+    }
+
+    .actions::-webkit-scrollbar {
+        display: none;
+    }
+
+    .project-toolbar {
+        padding: 2px 4px;
+    }
+
+    #example-select {
+        max-width: 130px;
+        font-size: 10px;
+        padding: 4px 6px;
+    }
+
+    button {
+        padding: 6px 8px;
+        font-size: 10px;
+        min-height: 32px;
+    }
+
+    .btn-play-toggle {
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+    }
+
+    .workspace-grid {
+        position: relative;
+        width: 100vw;
+        height: calc(100vh - 48px - 50px);
+        overflow: hidden;
+        display: block;
+    }
+
+    .function-navigator-pane,
+    .editor-pane,
+    .inspector-pane {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+        display: none;
+    }
+
+    body.mobile-view-nav .function-navigator-pane {
+        display: flex;
+        border-right: none;
+        z-index: 10;
+    }
+
+    body.mobile-view-editor .editor-pane {
+        display: block;
+        z-index: 10;
+    }
+
+    body.mobile-view-inspector .inspector-pane {
+        display: flex;
+        border-left: none;
+        z-index: 10;
+    }
+
+    .chalk-footer {
+        display: none;
+    }
+
+    .mobile-tab-bar {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 50px;
+        background: #151c19;
+        border-top: 2px solid var(--panel-border);
+        z-index: 1000;
+        justify-content: space-around;
+        align-items: stretch;
+        padding: 0 4px;
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.6);
+    }
+
+    .mobile-tab-btn {
+        flex: 1;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        margin: 4px 2px;
+        padding: 4px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-dim);
+        font-size: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        gap: 2px;
+    }
+
+    .mobile-tab-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #ffffff;
+    }
+
+    .mobile-tab-btn.active {
+        background: #20332a;
+        color: #55efc4;
+        border: 1px solid #384d43;
+    }
+
+    .mobile-tab-icon {
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    .mobile-tab-label {
+        font-size: 10px;
+        letter-spacing: 0.3px;
+    }
+
+    .progress-card {
+        width: calc(100vw - 32px);
+        max-width: 400px;
+        padding: 16px;
+    }
 }
 

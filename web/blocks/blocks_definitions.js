@@ -142,7 +142,7 @@ export function registerScratchPPBlocks(Blockly) {
     Blockly.Blocks['spp_start_func'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("⚡ start function:")
+                .appendField("🐜 start function:")
                 .appendField(new Blockly.FieldTextInput("myFunction"), "FUNC_NAME");
             this.setColour('#ec4899');
             this.setTooltip("Defines start function (0x08) executed automatically on instantiation.");
@@ -1894,7 +1894,7 @@ export function registerScratchPPBlocks(Blockly) {
     Blockly.Blocks['spp_inline_wat'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("⚡ Inline WAT")
+                .appendField("🐜 Inline WAT")
                 .appendField(new Blockly.FieldDropdown([
                     ["void", "void"],
                     ["i32", "i32"],
