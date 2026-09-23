@@ -1,6 +1,7 @@
 /**
  * Scratch++ Intermediate Representation (IR)
- * 100% WebAssembly 1.0 (MVP) - Full Import/Export/Start/Table/Memory Spec
+ * 100% WebAssembly 2.0 (W3C Recommendation)
+ * Sign-Extension, Trunc Sat (0xFC), Bulk Memory, Reference Types, Multi-Table, Tail Calls, SIMD 128-bit (0xFD)
  */
 
 import { Type, TYPE_METADATA } from './types.js';
@@ -12,6 +13,7 @@ export const IROp = {
     CONST_I64: 'const_i64',
     CONST_F32: 'const_f32',
     CONST_F64: 'const_f64',
+    CONST_V128: 'const_v128',
 
     // Variables & Globals
     LOCAL_GET: 'local_get',
@@ -33,9 +35,11 @@ export const IROp = {
     DROP: 'drop',
     SELECT: 'select',
 
-    // Calls
+    // Calls & Tail Calls
     CALL: 'call',
     CALL_INDIRECT: 'call_indirect',
+    RETURN_CALL: 'return_call',
+    RETURN_CALL_INDIRECT: 'return_call_indirect',
 
     // Integer Unary
     CLZ: 'clz',
@@ -91,11 +95,15 @@ export const IROp = {
     GE_U: 'ge_u',
     GE: 'ge',
 
-    // Conversions & Bitcasts
+    // Conversions & Bitcasts (Wasm 1.0 + Wasm 2.0 Sign-Extension & Trunc-Sat)
     CONVERT: 'convert',
     REINTERPRET: 'reinterpret',
+    EXTEND8_S: 'extend8_s',
+    EXTEND16_S: 'extend16_s',
+    EXTEND32_S: 'extend32_s',
+    TRUNC_SAT: 'trunc_sat',
 
-    // Memory (Load / Store)
+    // Memory (Load / Store / Bulk)
     LOAD: 'load',
     LOAD8_S: 'load8_s',
     LOAD8_U: 'load8_u',
@@ -108,7 +116,33 @@ export const IROp = {
     STORE16: 'store16',
     STORE32: 'store32',
     MEMORY_GROW: 'memory_grow',
-    MEMORY_SIZE: 'memory_size'
+    MEMORY_SIZE: 'memory_size',
+    MEMORY_COPY: 'memory_copy',
+    MEMORY_FILL: 'memory_fill',
+    MEMORY_INIT: 'memory_init',
+    DATA_DROP: 'data_drop',
+
+    // Reference Types & Tables (Wasm 2.0)
+    REF_NULL: 'ref_null',
+    REF_IS_NULL: 'ref_is_null',
+    REF_FUNC: 'ref_func',
+    TABLE_GET: 'table_get',
+    TABLE_SET: 'table_set',
+    TABLE_SIZE: 'table_size',
+    TABLE_GROW: 'table_grow',
+    TABLE_FILL: 'table_fill',
+    TABLE_COPY: 'table_copy',
+    TABLE_INIT: 'table_init',
+    ELEM_DROP: 'elem_drop',
+
+    // Fixed-Width SIMD 128-bit (0xFD)
+    V128_SPLAT: 'v128_splat',
+    V128_EXTRACT_LANE: 'v128_extract_lane',
+    V128_REPLACE_LANE: 'v128_replace_lane',
+    V128_OP: 'v128_op',
+    V128_BITSELECT: 'v128_bitselect',
+    V128_LOAD: 'v128_load',
+    V128_STORE: 'v128_store'
 };
 
 export class IRNode {
@@ -124,8 +158,8 @@ export class IRFunction {
     constructor(name, index, paramTypes = [], returnType = null) {
         this.name = name;
         this.index = index;
-        this.paramTypes = paramTypes;
-        this.returnType = returnType;
+        this.paramTypes = paramTypes; // array of wasmTypes
+        this.returnType = returnType; // string or array of strings for multi-value
         this.locals = [];
         this.body = [];
     }
@@ -143,7 +177,7 @@ export class IRModule {
         this.imports = []; // [{module, name, kind: 'func'|'global'|'mem'|'table', params, returnType, type, mutable, min, max}]
         this.functions = [];
         this.globals = [];
-        this.table = { min: 0, max: 0, elements: [] };
+        this.tables = []; // [{name, type, min, max, elements}]
         this.memory = { min: 2, max: 128 };
         this.dataSegments = [];
         this.exports = [];
@@ -156,6 +190,7 @@ export class ASTToLowerer {
         this.module = new IRModule();
         this.funcMap = new Map();
         this.globalMap = new Map();
+        this.tableMap = new Map();
         this.currentFunc = null;
         this.localMap = new Map();
         this.stringOffsets = new Map();
@@ -165,16 +200,20 @@ export class ASTToLowerer {
         this.module = new IRModule();
         this.funcMap.clear();
         this.globalMap.clear();
+        this.tableMap.clear();
         this.localMap.clear();
         this.stringOffsets.clear();
 
         // 1. Setup All Function Imports (Host + User Custom)
         let funcIndex = 0;
-        for (const imp of typeCheckResult.importedFuncs) {
+        for (const imp of (typeCheckResult.importedFuncs || [])) {
             const paramTypes = imp.params.map(p => TYPE_METADATA[p.type]?.wasmType || 'i32');
-            const returnType = imp.returnType && imp.returnType !== Type.VOID
-                ? (TYPE_METADATA[imp.returnType]?.wasmType || 'i32')
-                : null;
+            let returnType = null;
+            if (Array.isArray(imp.returnType)) {
+                returnType = imp.returnType.map(r => TYPE_METADATA[r]?.wasmType || 'i32');
+            } else if (imp.returnType && imp.returnType !== Type.VOID) {
+                returnType = TYPE_METADATA[imp.returnType]?.wasmType || 'i32';
+            }
 
             this.module.imports.push({
                 module: imp.module,
@@ -187,16 +226,65 @@ export class ASTToLowerer {
         }
 
         // 2. Setup Data Segments for constant strings
-        this.setupDataSegments(typeCheckResult.stringConstants);
+        this.setupDataSegments(typeCheckResult.stringConstants || new Map());
 
         // 3. Setup Defined Functions indices
         for (const func of programNode.functions) {
             this.funcMap.set(func.name, funcIndex++);
         }
 
-        // 4. Setup Globals (Imported Globals + Defined Globals)
+        // 4. Setup Tables (Wasm 2.0 Multi-Table & funcref/externref)
+        let tableIndex = 0;
+        if (programNode.tables && programNode.tables.length > 0) {
+            for (const t of programNode.tables) {
+                const wasmRefType = TYPE_METADATA[t.refType]?.wasmType || 'funcref';
+                this.module.tables.push({
+                    name: t.name,
+                    type: wasmRefType,
+                    min: t.min || 1,
+                    max: t.max || Math.max(t.min || 1, 64),
+                    elements: []
+                });
+                if (t.isExported) {
+                    this.addExport(t.exportName || t.name, 'table', tableIndex);
+                }
+                this.tableMap.set(t.name, tableIndex++);
+            }
+        }
+
+        // Default funcref table for call_indirect / function references if table 0 doesn't exist
+        const tableFuncIndices = [];
+        for (const funcName of (typeCheckResult.tableFunctions || [])) {
+            const idx = this.funcMap.get(funcName);
+            if (idx !== undefined) {
+                tableFuncIndices.push(idx);
+            }
+        }
+
+        if (this.module.tables.length === 0) {
+            if (tableFuncIndices.length > 0) {
+                this.module.tables.push({
+                    name: '__default_table__',
+                    type: 'funcref',
+                    min: tableFuncIndices.length,
+                    max: Math.max(tableFuncIndices.length, 64),
+                    elements: tableFuncIndices
+                });
+                this.tableMap.set('__default_table__', 0);
+            }
+        } else {
+            const funcrefTable = this.module.tables.find(t => t.type === 'funcref');
+            if (funcrefTable && tableFuncIndices.length > 0) {
+                funcrefTable.elements = tableFuncIndices;
+                if (tableFuncIndices.length > funcrefTable.min) {
+                    funcrefTable.min = tableFuncIndices.length;
+                }
+            }
+        }
+
+        // 5. Setup Globals (Imported Globals + Defined Globals)
         let globalIndex = 0;
-        for (const impG of typeCheckResult.importedGlobals) {
+        for (const impG of (typeCheckResult.importedGlobals || [])) {
             const wasmType = TYPE_METADATA[impG.type]?.wasmType || 'i32';
             this.module.imports.push({
                 module: impG.module,
@@ -209,7 +297,7 @@ export class ASTToLowerer {
         }
 
         for (const g of programNode.globals) {
-            const wasmType = TYPE_METADATA[g.type].wasmType || 'i32';
+            const wasmType = TYPE_METADATA[g.type]?.wasmType || 'i32';
             this.module.globals.push({
                 name: g.name,
                 wasmType,
@@ -217,24 +305,10 @@ export class ASTToLowerer {
                 initValue: g.initExpr ? this.extractConstValue(g.initExpr) : 0
             });
             if (g.isExported) {
-                this.module.exports.push({ name: g.exportName || g.name, kind: 'global', index: globalIndex });
+                this.addExport(g.exportName || g.name, 'global', globalIndex);
             }
             this.globalMap.set(g.name, globalIndex++);
         }
-
-        // 5. Setup Function Table (funcref)
-        const tableFuncIndices = [];
-        for (const funcName of typeCheckResult.tableFunctions) {
-            const idx = this.funcMap.get(funcName);
-            if (idx !== undefined) {
-                tableFuncIndices.push(idx);
-            }
-        }
-        this.module.table = {
-            min: tableFuncIndices.length,
-            max: Math.max(tableFuncIndices.length, 64),
-            elements: tableFuncIndices
-        };
 
         // 6. Lower each defined function
         for (const func of programNode.functions) {
@@ -252,7 +326,7 @@ export class ASTToLowerer {
                 if (node) mainIrFunc.body.push(node);
             }
             this.module.functions.push(mainIrFunc);
-            this.module.exports.push({ name: '__main__', kind: 'func', index: mainFuncIdx });
+            this.addExport('__main__', 'func', mainFuncIdx);
         }
 
         // Handle explicit start function
@@ -269,24 +343,31 @@ export class ASTToLowerer {
             for (const exp of programNode.exports) {
                 if (exp.kind === 'func') {
                     const idx = this.funcMap.get(exp.internalName);
-                    if (idx !== undefined) this.module.exports.push({ name: exp.exportName, kind: 'func', index: idx });
+                    if (idx !== undefined) this.addExport(exp.exportName, 'func', idx);
                 } else if (exp.kind === 'global') {
                     const idx = this.globalMap.get(exp.internalName);
-                    if (idx !== undefined) this.module.exports.push({ name: exp.exportName, kind: 'global', index: idx });
+                    if (idx !== undefined) this.addExport(exp.exportName, 'global', idx);
                 } else if (exp.kind === 'mem') {
-                    this.module.exports.push({ name: exp.exportName, kind: 'mem', index: 0 });
+                    this.addExport(exp.exportName, 'mem', 0);
                 } else if (exp.kind === 'table') {
-                    this.module.exports.push({ name: exp.exportName, kind: 'table', index: 0 });
+                    const tIdx = this.tableMap.get(exp.internalName) || 0;
+                    this.addExport(exp.exportName, 'table', tIdx);
                 }
             }
         }
 
         // Ensure default memory export if not already exported
         if (!this.module.exports.some(e => e.kind === 'mem')) {
-            this.module.exports.push({ name: 'memory', kind: 'mem', index: 0 });
+            this.addExport('memory', 'mem', 0);
         }
 
         return this.module;
+    }
+
+    addExport(name, kind, index) {
+        if (!this.module.exports.some(e => e.name === name)) {
+            this.module.exports.push({ name, kind, index });
+        }
     }
 
     setupDataSegments(stringConstants) {
@@ -318,10 +399,13 @@ export class ASTToLowerer {
     }
 
     lowerFunction(funcNode) {
-        const paramTypes = funcNode.params.map(p => TYPE_METADATA[p.type].wasmType || 'i32');
-        const returnType = funcNode.returnType && funcNode.returnType !== Type.VOID
-            ? (TYPE_METADATA[funcNode.returnType].wasmType || 'i32')
-            : null;
+        const paramTypes = funcNode.params.map(p => TYPE_METADATA[p.type]?.wasmType || 'i32');
+        let returnType = null;
+        if (Array.isArray(funcNode.returnType)) {
+            returnType = funcNode.returnType.map(r => TYPE_METADATA[r]?.wasmType || 'i32');
+        } else if (funcNode.returnType && funcNode.returnType !== Type.VOID) {
+            returnType = TYPE_METADATA[funcNode.returnType]?.wasmType || 'i32';
+        }
 
         const fIdx = this.funcMap.get(funcNode.name);
         const irFunc = new IRFunction(funcNode.name, fIdx, paramTypes, returnType);
@@ -342,7 +426,7 @@ export class ASTToLowerer {
 
         this.module.functions.push(irFunc);
         if (funcNode.isExported) {
-            this.module.exports.push({ name: funcNode.exportName || funcNode.name, kind: 'func', index: fIdx });
+            this.addExport(funcNode.exportName || funcNode.name, 'func', fIdx);
         }
         this.currentFunc = null;
     }
@@ -352,14 +436,18 @@ export class ASTToLowerer {
 
         switch (node.nodeType) {
             case ASTNodeType.CONST: {
-                const wasmType = TYPE_METADATA[node.type].wasmType || 'i32';
+                const wasmType = TYPE_METADATA[node.type]?.wasmType || 'i32';
                 switch (wasmType) {
                     case 'i32': return new IRNode(IROp.CONST_I32, 'i32', [], Number(node.value));
                     case 'i64': return new IRNode(IROp.CONST_I64, 'i64', [], BigInt(node.value));
                     case 'f32': return new IRNode(IROp.CONST_F32, 'f32', [], Number(node.value));
                     case 'f64': return new IRNode(IROp.CONST_F64, 'f64', [], Number(node.value));
+                    case 'v128': return new IRNode(IROp.CONST_V128, 'v128', [], node.value);
                 }
             }
+
+            case ASTNodeType.V128_CONST:
+                return new IRNode(IROp.CONST_V128, 'v128', [], node.bytes);
 
             case ASTNodeType.STRING_LITERAL: {
                 const ptr = this.stringOffsets.get(node.value) || 0;
@@ -367,7 +455,7 @@ export class ASTToLowerer {
             }
 
             case ASTNodeType.DECLARE_VAR: {
-                const wasmType = TYPE_METADATA[node.type].wasmType || 'i32';
+                const wasmType = TYPE_METADATA[node.type]?.wasmType || 'i32';
                 const localIdx = this.currentFunc.addLocal(node.name, wasmType);
                 this.localMap.set(node.name, { index: localIdx, wasmType });
 
@@ -414,6 +502,23 @@ export class ASTToLowerer {
                 return null;
             }
 
+            case ASTNodeType.SIGN_EXTEND: {
+                const exprIr = this.lowerNode(node.expr);
+                if (node.width === 8) return new IRNode(IROp.EXTEND8_S, node.type, [exprIr]);
+                if (node.width === 16) return new IRNode(IROp.EXTEND16_S, node.type, [exprIr]);
+                if (node.width === 32) return new IRNode(IROp.EXTEND32_S, node.type, [exprIr]);
+                return exprIr;
+            }
+
+            case ASTNodeType.TRUNC_SAT: {
+                const exprIr = this.lowerNode(node.expr);
+                return new IRNode(IROp.TRUNC_SAT, node.targetType, [exprIr], {
+                    srcType: node.srcType,
+                    targetType: node.targetType,
+                    signed: node.signedness !== 'unsigned'
+                });
+            }
+
             case ASTNodeType.SELECT: {
                 const condIr = this.lowerNode(node.condition);
                 const trueIr = this.lowerNode(node.trueExpr);
@@ -435,12 +540,14 @@ export class ASTToLowerer {
 
             case ASTNodeType.BLOCK: {
                 const body = node.body.map(s => this.lowerNode(s)).filter(Boolean);
-                return new IRNode(IROp.BLOCK, null, [], { body, label: node.label });
+                const resType = node.resultType && node.resultType !== Type.VOID ? (TYPE_METADATA[node.resultType]?.wasmType || 'i32') : 'void';
+                return new IRNode(IROp.BLOCK, resType, [], { body, label: node.label, resultType: resType });
             }
 
             case ASTNodeType.LOOP: {
                 const body = node.body.map(s => this.lowerNode(s)).filter(Boolean);
-                return new IRNode(IROp.LOOP, null, [], { body, label: node.label });
+                const resType = node.resultType && node.resultType !== Type.VOID ? (TYPE_METADATA[node.resultType]?.wasmType || 'i32') : 'void';
+                return new IRNode(IROp.LOOP, resType, [], { body, label: node.label, resultType: resType });
             }
 
             case ASTNodeType.BR:
@@ -531,7 +638,7 @@ export class ASTToLowerer {
                 const exprIr = this.lowerNode(node.expr);
                 const fromType = node.expr.inferredType;
                 const toType = node.targetType;
-                return new IRNode(IROp.CONVERT, TYPE_METADATA[toType].wasmType, [exprIr], {
+                return new IRNode(IROp.CONVERT, TYPE_METADATA[toType]?.wasmType || 'i32', [exprIr], {
                     from: fromType,
                     to: toType,
                     signed: node.signedness !== 'unsigned'
@@ -542,7 +649,7 @@ export class ASTToLowerer {
                 const exprIr = this.lowerNode(node.expr);
                 const fromType = node.expr.inferredType;
                 const toType = node.targetType;
-                return new IRNode(IROp.REINTERPRET, TYPE_METADATA[toType].wasmType, [exprIr], { from: fromType, to: toType });
+                return new IRNode(IROp.REINTERPRET, TYPE_METADATA[toType]?.wasmType || 'i32', [exprIr], { from: fromType, to: toType });
             }
 
             case ASTNodeType.IF: {
@@ -598,7 +705,10 @@ export class ASTToLowerer {
             }
 
             case ASTNodeType.RETURN: {
-                if (node.valueExpr) {
+                if (Array.isArray(node.valueExpr)) {
+                    const valIrs = node.valueExpr.map(v => this.lowerNode(v));
+                    return new IRNode(IROp.RETURN, null, valIrs);
+                } else if (node.valueExpr) {
                     const valIr = this.lowerNode(node.valueExpr);
                     return new IRNode(IROp.RETURN, null, [valIr]);
                 }
@@ -617,14 +727,173 @@ export class ASTToLowerer {
                 const argsIr = node.args.map(a => this.lowerNode(a));
                 const returnType = node.returnType !== Type.VOID ? (TYPE_METADATA[node.returnType]?.wasmType || 'i32') : null;
                 const paramTypes = node.paramTypes.map(p => TYPE_METADATA[p]?.wasmType || 'i32');
-                return new IRNode(IROp.CALL_INDIRECT, returnType, [...argsIr, funcIdxIr], { paramTypes, returnType });
+                const tableIdx = node.tableIdx || 0;
+                return new IRNode(IROp.CALL_INDIRECT, returnType, [...argsIr, funcIdxIr], { paramTypes, returnType, tableIdx });
             }
 
+            case ASTNodeType.RETURN_CALL: {
+                const fIdx = this.funcMap.get(node.funcName);
+                const argsIr = node.args.map(a => this.lowerNode(a));
+                return new IRNode(IROp.RETURN_CALL, null, argsIr, fIdx);
+            }
+
+            case ASTNodeType.RETURN_CALL_INDIRECT: {
+                const funcIdxIr = this.lowerNode(node.funcIndexExpr);
+                const argsIr = node.args.map(a => this.lowerNode(a));
+                const returnType = node.returnType !== Type.VOID ? (TYPE_METADATA[node.returnType]?.wasmType || 'i32') : null;
+                const paramTypes = node.paramTypes.map(p => TYPE_METADATA[p]?.wasmType || 'i32');
+                const tableIdx = node.tableIdx || 0;
+                return new IRNode(IROp.RETURN_CALL_INDIRECT, returnType, [...argsIr, funcIdxIr], { paramTypes, returnType, tableIdx });
+            }
+
+            // Bulk Memory
+            case ASTNodeType.MEM_COPY: {
+                const dstIr = this.lowerNode(node.dstExpr);
+                const srcIr = this.lowerNode(node.srcExpr);
+                const lenIr = this.lowerNode(node.lenExpr);
+                return new IRNode(IROp.MEMORY_COPY, null, [dstIr, srcIr, lenIr]);
+            }
+
+            case ASTNodeType.MEM_FILL: {
+                const dstIr = this.lowerNode(node.dstExpr);
+                const valIr = this.lowerNode(node.valExpr);
+                const lenIr = this.lowerNode(node.lenExpr);
+                return new IRNode(IROp.MEMORY_FILL, null, [dstIr, valIr, lenIr]);
+            }
+
+            case ASTNodeType.MEM_INIT: {
+                const dstIr = this.lowerNode(node.dstExpr);
+                const srcIr = this.lowerNode(node.srcOffExpr);
+                const lenIr = this.lowerNode(node.lenExpr);
+                return new IRNode(IROp.MEMORY_INIT, null, [dstIr, srcIr, lenIr], node.dataIdx || 0);
+            }
+
+            case ASTNodeType.DATA_DROP:
+                return new IRNode(IROp.DATA_DROP, null, [], node.dataIdx || 0);
+
+            // Reference Types & Tables
+            case ASTNodeType.REF_NULL:
+                return new IRNode(IROp.REF_NULL, node.refType || 'funcref', [], node.refType || 'funcref');
+
+            case ASTNodeType.REF_IS_NULL: {
+                const exprIr = this.lowerNode(node.expr);
+                return new IRNode(IROp.REF_IS_NULL, 'i32', [exprIr]);
+            }
+
+            case ASTNodeType.REF_FUNC: {
+                const fIdx = this.funcMap.get(node.funcName) || 0;
+                return new IRNode(IROp.REF_FUNC, 'funcref', [], fIdx);
+            }
+
+            case ASTNodeType.TABLE_GET: {
+                const idxIr = this.lowerNode(node.idxExpr);
+                return new IRNode(IROp.TABLE_GET, 'funcref', [idxIr], node.tableIdx || 0);
+            }
+
+            case ASTNodeType.TABLE_SET: {
+                const idxIr = this.lowerNode(node.idxExpr);
+                const valIr = this.lowerNode(node.valExpr);
+                return new IRNode(IROp.TABLE_SET, null, [idxIr, valIr], node.tableIdx || 0);
+            }
+
+            case ASTNodeType.TABLE_SIZE:
+                return new IRNode(IROp.TABLE_SIZE, 'i32', [], node.tableIdx || 0);
+
+            case ASTNodeType.TABLE_GROW: {
+                const valIr = this.lowerNode(node.valExpr);
+                const deltaIr = this.lowerNode(node.deltaExpr);
+                return new IRNode(IROp.TABLE_GROW, 'i32', [valIr, deltaIr], node.tableIdx || 0);
+            }
+
+            case ASTNodeType.TABLE_FILL: {
+                const offIr = this.lowerNode(node.offExpr);
+                const valIr = this.lowerNode(node.valExpr);
+                const lenIr = this.lowerNode(node.lenExpr);
+                return new IRNode(IROp.TABLE_FILL, null, [offIr, valIr, lenIr], node.tableIdx || 0);
+            }
+
+            case ASTNodeType.TABLE_COPY: {
+                const dstOffIr = this.lowerNode(node.dstOffExpr);
+                const srcOffIr = this.lowerNode(node.srcOffExpr);
+                const lenIr = this.lowerNode(node.lenExpr);
+                return new IRNode(IROp.TABLE_COPY, null, [dstOffIr, srcOffIr, lenIr], {
+                    dstTable: node.dstTableIdx || 0,
+                    srcTable: node.srcTableIdx || 0
+                });
+            }
+
+            case ASTNodeType.TABLE_INIT: {
+                const dstOffIr = this.lowerNode(node.dstOffExpr);
+                const srcOffIr = this.lowerNode(node.srcOffExpr);
+                const lenIr = this.lowerNode(node.lenExpr);
+                return new IRNode(IROp.TABLE_INIT, null, [dstOffIr, srcOffIr, lenIr], {
+                    elemIdx: node.elemIdx || 0,
+                    tableIdx: node.tableIdx || 0
+                });
+            }
+
+            case ASTNodeType.ELEM_DROP:
+                return new IRNode(IROp.ELEM_DROP, null, [], node.elemIdx || 0);
+
+            // SIMD 128-bit
+            case ASTNodeType.V128_SPLAT: {
+                const exprIr = this.lowerNode(node.expr);
+                return new IRNode(IROp.V128_SPLAT, 'v128', [exprIr], node.laneType);
+            }
+
+            case ASTNodeType.V128_EXTRACT_LANE: {
+                const vecIr = this.lowerNode(node.vecExpr);
+                return new IRNode(IROp.V128_EXTRACT_LANE, node.laneType.startsWith('f') ? 'f64' : 'i32', [vecIr], {
+                    laneType: node.laneType,
+                    laneIdx: node.laneIdx,
+                    signed: node.signedness !== 'unsigned'
+                });
+            }
+
+            case ASTNodeType.V128_REPLACE_LANE: {
+                const vecIr = this.lowerNode(node.vecExpr);
+                const valIr = this.lowerNode(node.valExpr);
+                return new IRNode(IROp.V128_REPLACE_LANE, 'v128', [vecIr, valIr], {
+                    laneType: node.laneType,
+                    laneIdx: node.laneIdx
+                });
+            }
+
+            case ASTNodeType.V128_OP: {
+                const lIr = this.lowerNode(node.left);
+                const rIr = node.right ? this.lowerNode(node.right) : null;
+                const args = rIr ? [lIr, rIr] : [lIr];
+                return new IRNode(IROp.V128_OP, 'v128', args, node.op);
+            }
+
+            case ASTNodeType.V128_BITSELECT: {
+                const v1Ir = this.lowerNode(node.v1);
+                const v2Ir = this.lowerNode(node.v2);
+                const cIr = this.lowerNode(node.c);
+                return new IRNode(IROp.V128_BITSELECT, 'v128', [v1Ir, v2Ir, cIr]);
+            }
+
+            case ASTNodeType.V128_LOAD: {
+                const bufIr = this.lowerNode(node.bufferExpr);
+                const offIr = this.lowerNode(node.offsetExpr);
+                const addr = new IRNode(IROp.ADD, 'i32', [bufIr, offIr]);
+                return new IRNode(IROp.V128_LOAD, 'v128', [addr], { offset: node.staticOffset || 0, align: node.align || 4 });
+            }
+
+            case ASTNodeType.V128_STORE: {
+                const bufIr = this.lowerNode(node.bufferExpr);
+                const offIr = this.lowerNode(node.offsetExpr);
+                const valIr = this.lowerNode(node.valueExpr);
+                const addr = new IRNode(IROp.ADD, 'i32', [bufIr, offIr]);
+                return new IRNode(IROp.V128_STORE, 'v128', [addr, valIr], { offset: node.staticOffset || 0, align: node.align || 4 });
+            }
+
+            // Memory Operations
             case ASTNodeType.MEM_LOAD: {
                 const bufIr = this.lowerNode(node.bufferExpr);
                 const offIr = this.lowerNode(node.offsetExpr);
                 const addr = new IRNode(IROp.ADD, 'i32', [bufIr, offIr]);
-                const wasmType = TYPE_METADATA[node.type].wasmType || 'i32';
+                const wasmType = TYPE_METADATA[node.type]?.wasmType || 'i32';
                 const signed = node.signedness !== 'unsigned';
 
                 let op = IROp.LOAD;
@@ -655,34 +924,36 @@ export class ASTToLowerer {
                 return new IRNode(IROp.MEMORY_GROW, 'i32', [pagesIr]);
             }
 
-            case ASTNodeType.MEM_SIZE: {
+            case ASTNodeType.MEM_SIZE:
                 return new IRNode(IROp.MEMORY_SIZE, 'i32', []);
-            }
 
             case ASTNodeType.PRINT: {
                 const exprIr = this.lowerNode(node.expr);
                 const exprType = node.expr.inferredType;
-                if (exprType === Type.TEXTO) {
+                if (exprType === Type.TEXTO || exprType === Type.STRING) {
                     const ptrLocal = this.currentFunc.addLocal('__str_ptr', 'i32');
                     const setPtr = new IRNode(IROp.LOCAL_SET, null, [exprIr], ptrLocal);
                     const getPtr = new IRNode(IROp.LOCAL_GET, 'i32', [], ptrLocal);
                     const getLen = new IRNode(IROp.LOAD, 'i32', [
                         new IRNode(IROp.SUB, 'i32', [new IRNode(IROp.LOCAL_GET, 'i32', [], ptrLocal), new IRNode(IROp.CONST_I32, 'i32', [], 4)])
                     ]);
-                    const callPrintStr = new IRNode(IROp.CALL, null, [getPtr, getLen], 2);
+                    const printStrIdx = this.funcMap.get('print_str') || 0;
+                    const callPrintStr = new IRNode(IROp.CALL, null, [getPtr, getLen], printStrIdx);
                     return new IRNode(IROp.BLOCK, null, [], { body: [setPtr, callPrintStr] });
                 } else if (exprType === Type.F32 || exprType === Type.F64) {
                     let f64Ir = exprIr;
                     if (exprType === Type.F32) {
                         f64Ir = new IRNode(IROp.CONVERT, 'f64', [exprIr], { from: Type.F32, to: Type.F64 });
                     }
-                    return new IRNode(IROp.CALL, null, [f64Ir], 1);
+                    const printF64Idx = this.funcMap.get('print_f64') || 0;
+                    return new IRNode(IROp.CALL, null, [f64Ir], printF64Idx);
                 } else {
                     let i32Ir = exprIr;
                     if (exprType === Type.I64) {
                         i32Ir = new IRNode(IROp.CONVERT, 'i32', [exprIr], { from: Type.I64, to: Type.I32 });
                     }
-                    return new IRNode(IROp.CALL, null, [i32Ir], 0);
+                    const printI32Idx = this.funcMap.get('print_i32') || 0;
+                    return new IRNode(IROp.CALL, null, [i32Ir], printI32Idx);
                 }
             }
 

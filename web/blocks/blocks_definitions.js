@@ -22,6 +22,9 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i64", "i64"],
                     ["f32", "f32"],
                     ["f64", "f64"],
+                    ["v128", "v128"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"],
                     ["bool", "bool"],
                     ["texto", "texto"],
                     ["buffer", "buffer"],
@@ -77,7 +80,10 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i32", "i32"],
                     ["i64", "i64"],
                     ["f32", "f32"],
-                    ["f64", "f64"]
+                    ["f64", "f64"],
+                    ["v128", "v128"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"]
                 ]), "RETURN_TYPE");
             this.appendStatementInput("PARAMS").setCheck("spp_param").appendField("parâmetros:");
             this.setColour('#6366f1');
@@ -100,7 +106,10 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i32", "i32"],
                     ["i64", "i64"],
                     ["f32", "f32"],
-                    ["f64", "f64"]
+                    ["f64", "f64"],
+                    ["v128", "v128"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"]
                 ]), "TYPE")
                 .appendField(new Blockly.FieldDropdown([
                     ["imutável (const)", "const"],
@@ -221,6 +230,7 @@ export function registerScratchPPBlocks(Blockly) {
                 .appendField("desviar (br) nível:")
                 .appendField(new Blockly.FieldNumber(0, 0, 32), "DEPTH");
             this.setPreviousStatement(true);
+            this.setNextStatement(true);
             this.setColour(TYPE_COLORS.control);
             this.setTooltip("Salto incondicional br para bloco/loop pai.");
         }
@@ -252,6 +262,7 @@ export function registerScratchPPBlocks(Blockly) {
                 .appendField("padrão:")
                 .appendField(new Blockly.FieldNumber(0), "DEFAULT");
             this.setPreviousStatement(true);
+            this.setNextStatement(true);
             this.setColour(TYPE_COLORS.control);
             this.setTooltip("Desvio por tabela de índices br_table.");
         }
@@ -273,6 +284,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendValueInput("VALUE").appendField("retorne (return)");
             this.setPreviousStatement(true);
+            this.setNextStatement(true);
             this.setColour(TYPE_COLORS.control);
             this.setTooltip("Instrução return da função atual.");
         }
@@ -302,6 +314,7 @@ export function registerScratchPPBlocks(Blockly) {
         init: function() {
             this.appendDummyInput().appendField("⚠️ unreachable (trap fatal)");
             this.setPreviousStatement(true);
+            this.setNextStatement(true);
             this.setColour('#dc2626');
             this.setTooltip("Dispara um trap de execução fatal unreachable.");
         }
@@ -321,6 +334,9 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i64", "i64"],
                     ["f32", "f32"],
                     ["f64", "f64"],
+                    ["v128", "v128"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"],
                     ["bool", "bool"],
                     ["texto", "texto"],
                     ["buffer", "buffer"],
@@ -371,7 +387,10 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i32", "i32"],
                     ["i64", "i64"],
                     ["f32", "f32"],
-                    ["f64", "f64"]
+                    ["f64", "f64"],
+                    ["v128", "v128"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"]
                 ]), "TYPE")
                 .appendField(new Blockly.FieldTextInput("g"), "NAME")
                 .appendField(new Blockly.FieldDropdown([
@@ -1349,6 +1368,9 @@ export function registerScratchPPBlocks(Blockly) {
                     ["i64", "i64"],
                     ["f32", "f32"],
                     ["f64", "f64"],
+                    ["v128", "v128"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"],
                     ["bool", "bool"],
                     ["texto", "texto"],
                     ["buffer", "buffer"]
@@ -1416,11 +1438,14 @@ export function registerScratchPPBlocks(Blockly) {
             this.appendDummyInput()
                 .appendField("retorno:")
                 .appendField(new Blockly.FieldDropdown([
+                    ["void", "void"],
                     ["i32", "i32"],
                     ["i64", "i64"],
                     ["f32", "f32"],
                     ["f64", "f64"],
-                    ["void", "void"]
+                    ["v128", "v128"],
+                    ["funcref", "funcref"],
+                    ["externref", "externref"]
                 ]), "RETURN_TYPE")
                 .appendField("tipos params:")
                 .appendField(new Blockly.FieldTextInput("i32"), "PARAM_TYPES");
@@ -1455,4 +1480,405 @@ export function registerScratchPPBlocks(Blockly) {
             this.setTooltip("Concatena dois textos na heap.");
         }
     };
+
+    // -------------------------------------------------------------------------
+    // 9. WASM 2.0: EXTENSION OPCODES & SATURATION
+    // -------------------------------------------------------------------------
+    Blockly.Blocks['spp_sign_extend'] = {
+        init: function() {
+            this.appendValueInput("VALUE")
+                .appendField("sign_extend")
+                .appendField(new Blockly.FieldDropdown([
+                    ["i32.extend8_s (8->32 bits)", "8_i32"],
+                    ["i32.extend16_s (16->32 bits)", "16_i32"],
+                    ["i64.extend8_s (8->64 bits)", "8_i64"],
+                    ["i64.extend16_s (16->64 bits)", "16_i64"],
+                    ["i64.extend32_s (32->64 bits)", "32_i64"]
+                ]), "MODE");
+            this.setOutput(true);
+            this.setColour(TYPE_COLORS.math);
+            this.setTooltip("Extensão com sinal (Sign-extension operators).");
+        }
+    };
+
+    Blockly.Blocks['spp_trunc_sat'] = {
+        init: function() {
+            this.appendValueInput("VALUE")
+                .appendField("trunc_sat")
+                .appendField(new Blockly.FieldDropdown([
+                    ["i32.trunc_sat_f32_s", "i32_f32_s"],
+                    ["i32.trunc_sat_f32_u", "i32_f32_u"],
+                    ["i32.trunc_sat_f64_s", "i32_f64_s"],
+                    ["i32.trunc_sat_f64_u", "i32_f64_u"],
+                    ["i64.trunc_sat_f32_s", "i64_f32_s"],
+                    ["i64.trunc_sat_f32_u", "i64_f32_u"],
+                    ["i64.trunc_sat_f64_s", "i64_f64_s"],
+                    ["i64.trunc_sat_f64_u", "i64_f64_u"]
+                ]), "MODE");
+            this.setOutput(true);
+            this.setColour(TYPE_COLORS.math);
+            this.setTooltip("Truncamento saturado sem trap em overflow/NaN (Non-trapping float-to-int).");
+        }
+    };
+
+    // -------------------------------------------------------------------------
+    // 10. WASM 2.0: BULK MEMORY
+    // -------------------------------------------------------------------------
+    Blockly.Blocks['spp_mem_copy'] = {
+        init: function() {
+            this.appendValueInput("DST").setCheck("i32").appendField("memory.copy destino offset:");
+            this.appendValueInput("SRC").setCheck("i32").appendField("origem offset:");
+            this.appendValueInput("LEN").setCheck("i32").appendField("tamanho bytes:");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.memory);
+            this.setTooltip("Copia bloco de memória (memory.copy).");
+        }
+    };
+
+    Blockly.Blocks['spp_mem_fill'] = {
+        init: function() {
+            this.appendValueInput("DST").setCheck("i32").appendField("memory.fill destino offset:");
+            this.appendValueInput("VAL").setCheck("i32").appendField("byte valor:");
+            this.appendValueInput("LEN").setCheck("i32").appendField("tamanho bytes:");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.memory);
+            this.setTooltip("Preenche bloco de memória com byte (memory.fill).");
+        }
+    };
+
+    Blockly.Blocks['spp_mem_init'] = {
+        init: function() {
+            this.appendDummyInput().appendField("memory.init segmento:").appendField(new Blockly.FieldNumber(0), "SEGMENT");
+            this.appendValueInput("DST").setCheck("i32").appendField("destino offset:");
+            this.appendValueInput("SRC").setCheck("i32").appendField("segmento offset:");
+            this.appendValueInput("LEN").setCheck("i32").appendField("tamanho bytes:");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.memory);
+            this.setTooltip("Inicializa memória a partir de data segment passivo.");
+        }
+    };
+
+    Blockly.Blocks['spp_data_drop'] = {
+        init: function() {
+            this.appendDummyInput().appendField("data.drop segmento:").appendField(new Blockly.FieldNumber(0), "SEGMENT");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.memory);
+            this.setTooltip("Descarta segmento passivo de dados.");
+        }
+    };
+
+    // -------------------------------------------------------------------------
+    // 11. WASM 2.0: REFERENCE TYPES & MULTI-TABLE
+    // -------------------------------------------------------------------------
+    Blockly.Blocks['spp_table_declare'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("🗄️ Tabela")
+                .appendField(new Blockly.FieldTextInput("table0"), "NAME")
+                .appendField("tipo:")
+                .appendField(new Blockly.FieldDropdown([
+                    ["funcref", "funcref"],
+                    ["externref", "externref"]
+                ]), "TYPE")
+                .appendField("mínimo:")
+                .appendField(new Blockly.FieldNumber(1), "MIN")
+                .appendField("máximo:")
+                .appendField(new Blockly.FieldTextInput(""), "MAX");
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Declara uma tabela WebAssembly 2.0.");
+        }
+    };
+
+    Blockly.Blocks['spp_ref_null'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("ref.null")
+                .appendField(new Blockly.FieldDropdown([
+                    ["funcref", "funcref"],
+                    ["externref", "externref"]
+                ]), "TYPE");
+            this.setOutput(true);
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Referência nula.");
+        }
+    };
+
+    Blockly.Blocks['spp_ref_is_null'] = {
+        init: function() {
+            this.appendValueInput("REF").appendField("ref.is_null");
+            this.setOutput(true, "bool");
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Testa se referência é nula.");
+        }
+    };
+
+    Blockly.Blocks['spp_ref_func'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("ref.func")
+                .appendField(new Blockly.FieldTextInput("minha_funcao"), "NAME");
+            this.setOutput(true, "funcref");
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Obtém referência para função.");
+        }
+    };
+
+    Blockly.Blocks['spp_table_get'] = {
+        init: function() {
+            this.appendDummyInput().appendField("table.get tabela:").appendField(new Blockly.FieldNumber(0), "TABLE_IDX");
+            this.appendValueInput("INDEX").setCheck("i32").appendField("índice:");
+            this.setOutput(true);
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Obtém elemento de uma tabela.");
+        }
+    };
+
+    Blockly.Blocks['spp_table_set'] = {
+        init: function() {
+            this.appendDummyInput().appendField("table.set tabela:").appendField(new Blockly.FieldNumber(0), "TABLE_IDX");
+            this.appendValueInput("INDEX").setCheck("i32").appendField("índice:");
+            this.appendValueInput("VALUE").appendField("valor:");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Define elemento de uma tabela.");
+        }
+    };
+
+    Blockly.Blocks['spp_table_size'] = {
+        init: function() {
+            this.appendDummyInput().appendField("table.size tabela:").appendField(new Blockly.FieldNumber(0), "TABLE_IDX");
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Retorna tamanho atual da tabela.");
+        }
+    };
+
+    Blockly.Blocks['spp_table_grow'] = {
+        init: function() {
+            this.appendDummyInput().appendField("table.grow tabela:").appendField(new Blockly.FieldNumber(0), "TABLE_IDX");
+            this.appendValueInput("INIT_VAL").appendField("valor inicial:");
+            this.appendValueInput("DELTA").setCheck("i32").appendField("elementos adicionais:");
+            this.setOutput(true, "i32");
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Expande tamanho da tabela.");
+        }
+    };
+
+    Blockly.Blocks['spp_table_fill'] = {
+        init: function() {
+            this.appendDummyInput().appendField("table.fill tabela:").appendField(new Blockly.FieldNumber(0), "TABLE_IDX");
+            this.appendValueInput("START").setCheck("i32").appendField("início:");
+            this.appendValueInput("VALUE").appendField("valor:");
+            this.appendValueInput("COUNT").setCheck("i32").appendField("quantidade:");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Preenche faixa da tabela.");
+        }
+    };
+
+    Blockly.Blocks['spp_table_copy'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("table.copy tabela dest:")
+                .appendField(new Blockly.FieldNumber(0), "DST_TABLE")
+                .appendField("tabela orig:")
+                .appendField(new Blockly.FieldNumber(0), "SRC_TABLE");
+            this.appendValueInput("DST").setCheck("i32").appendField("offset dest:");
+            this.appendValueInput("SRC").setCheck("i32").appendField("offset orig:");
+            this.appendValueInput("COUNT").setCheck("i32").appendField("quantidade:");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Copia elementos entre tabelas.");
+        }
+    };
+
+    Blockly.Blocks['spp_table_init'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("table.init tabela:")
+                .appendField(new Blockly.FieldNumber(0), "TABLE_IDX")
+                .appendField("elem segmento:")
+                .appendField(new Blockly.FieldNumber(0), "ELEM_IDX");
+            this.appendValueInput("DST").setCheck("i32").appendField("offset dest:");
+            this.appendValueInput("SRC").setCheck("i32").appendField("offset elem:");
+            this.appendValueInput("COUNT").setCheck("i32").appendField("quantidade:");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Inicializa tabela a partir de elemento passivo.");
+        }
+    };
+
+    Blockly.Blocks['spp_elem_drop'] = {
+        init: function() {
+            this.appendDummyInput().appendField("elem.drop elemento:").appendField(new Blockly.FieldNumber(0), "ELEM_IDX");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.ref);
+            this.setTooltip("Descarta segmento passivo de elementos de tabela.");
+        }
+    };
+
+    // -------------------------------------------------------------------------
+    // 12. WASM 2.0: TAIL CALLS
+    // -------------------------------------------------------------------------
+    Blockly.Blocks['spp_return_call'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("⏩ return_call")
+                .appendField(new Blockly.FieldTextInput("minha_funcao"), "NAME");
+            this.appendValueInput("ARG0").appendField("arg 1:").setAlign(Blockly.ALIGN_RIGHT);
+            this.appendValueInput("ARG1").appendField("arg 2:").setAlign(Blockly.ALIGN_RIGHT);
+            this.appendValueInput("ARG2").appendField("arg 3:").setAlign(Blockly.ALIGN_RIGHT);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.functions);
+            this.setTooltip("Chamada recursiva terminal direta (Tail Call).");
+        }
+    };
+
+    Blockly.Blocks['spp_return_call_indirect'] = {
+        init: function() {
+            this.appendDummyInput().appendField("⏩ return_call_indirect tabela:").appendField(new Blockly.FieldNumber(0), "TABLE_IDX");
+            this.appendValueInput("FUNC_INDEX").appendField("índice na tabela:");
+            this.appendValueInput("ARG0").appendField("arg 1:").setAlign(Blockly.ALIGN_RIGHT);
+            this.appendValueInput("ARG1").appendField("arg 2:").setAlign(Blockly.ALIGN_RIGHT);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.functions);
+            this.setTooltip("Chamada recursiva terminal indireta (Tail Call Indirect).");
+        }
+    };
+
+    // -------------------------------------------------------------------------
+    // 13. WASM 2.0: FIXED-WIDTH SIMD 128 (v128)
+    // -------------------------------------------------------------------------
+    Blockly.Blocks['spp_v128_const'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("v128.const (16 bytes hex):")
+                .appendField(new Blockly.FieldTextInput("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"), "VALUE");
+            this.setOutput(true, "v128");
+            this.setColour(TYPE_COLORS.v128);
+            this.setTooltip("Vetor SIMD 128-bit constante.");
+        }
+    };
+
+    Blockly.Blocks['spp_v128_splat'] = {
+        init: function() {
+            this.appendValueInput("VALUE")
+                .appendField("v128.splat")
+                .appendField(new Blockly.FieldDropdown([
+                    ["i8x16.splat", "i8x16"],
+                    ["i16x8.splat", "i16x8"],
+                    ["i32x4.splat", "i32x4"],
+                    ["i64x2.splat", "i64x2"],
+                    ["f32x4.splat", "f32x4"],
+                    ["f64x2.splat", "f64x2"]
+                ]), "LANE_TYPE")
+                .appendField("valor escalar:");
+            this.setOutput(true, "v128");
+            this.setColour(TYPE_COLORS.v128);
+            this.setTooltip("Replica escalar em todas as vias do vetor SIMD.");
+        }
+    };
+
+    Blockly.Blocks['spp_v128_extract_lane'] = {
+        init: function() {
+            this.appendValueInput("VECTOR")
+                .setCheck("v128")
+                .appendField("extrair via")
+                .appendField(new Blockly.FieldDropdown([
+                    ["i8x16.extract_lane_s", "i8x16_s"],
+                    ["i8x16.extract_lane_u", "i8x16_u"],
+                    ["i16x8.extract_lane_s", "i16x8_s"],
+                    ["i16x8.extract_lane_u", "i16x8_u"],
+                    ["i32x4.extract_lane", "i32x4"],
+                    ["i64x2.extract_lane", "i64x2"],
+                    ["f32x4.extract_lane", "f32x4"],
+                    ["f64x2.extract_lane", "f64x2"]
+                ]), "LANE_TYPE")
+                .appendField("índice via:")
+                .appendField(new Blockly.FieldNumber(0), "LANE_IDX");
+            this.setOutput(true);
+            this.setColour(TYPE_COLORS.v128);
+            this.setTooltip("Extrai escalar de via específica de vetor SIMD.");
+        }
+    };
+
+    Blockly.Blocks['spp_v128_replace_lane'] = {
+        init: function() {
+            this.appendValueInput("VECTOR")
+                .setCheck("v128")
+                .appendField("substituir via")
+                .appendField(new Blockly.FieldDropdown([
+                    ["i8x16.replace_lane", "i8x16"],
+                    ["i16x8.replace_lane", "i16x8"],
+                    ["i32x4.replace_lane", "i32x4"],
+                    ["i64x2.replace_lane", "i64x2"],
+                    ["f32x4.replace_lane", "f32x4"],
+                    ["f64x2.replace_lane", "f64x2"]
+                ]), "LANE_TYPE")
+                .appendField("índice via:")
+                .appendField(new Blockly.FieldNumber(0), "LANE_IDX");
+            this.appendValueInput("VALUE").appendField("novo valor:");
+            this.setOutput(true, "v128");
+            this.setColour(TYPE_COLORS.v128);
+            this.setTooltip("Substitui elemento em via de vetor SIMD.");
+        }
+    };
+
+    Blockly.Blocks['spp_v128_binop'] = {
+        init: function() {
+            this.appendValueInput("LEFT").setCheck("v128").appendField("SIMD op");
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldTextInput("i32x4.add"), "OP");
+            this.appendValueInput("RIGHT").setCheck("v128");
+            this.setInputsInline(true);
+            this.setOutput(true, "v128");
+            this.setColour(TYPE_COLORS.v128);
+            this.setTooltip("Operação vetorial binária SIMD.");
+        }
+    };
+
+    Blockly.Blocks['spp_v128_bitselect'] = {
+        init: function() {
+            this.appendValueInput("V1").setCheck("v128").appendField("v128.bitselect v1:");
+            this.appendValueInput("V2").setCheck("v128").appendField("v2:");
+            this.appendValueInput("MASK").setCheck("v128").appendField("máscara:");
+            this.setOutput(true, "v128");
+            this.setColour(TYPE_COLORS.v128);
+            this.setTooltip("Seleção bit a bit com máscara SIMD.");
+        }
+    };
+
+    Blockly.Blocks['spp_v128_load'] = {
+        init: function() {
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("v128.load offset:");
+            this.appendDummyInput().appendField("static offset:").appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.setOutput(true, "v128");
+            this.setColour(TYPE_COLORS.v128);
+            this.setTooltip("Carrega vetor de 128 bits da memória.");
+        }
+    };
+
+    Blockly.Blocks['spp_v128_store'] = {
+        init: function() {
+            this.appendValueInput("VALUE").setCheck("v128").appendField("v128.store vetor:");
+            this.appendValueInput("OFFSET").setCheck("i32").appendField("offset:");
+            this.appendDummyInput().appendField("static offset:").appendField(new Blockly.FieldNumber(0), "STATIC_OFFSET");
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour(TYPE_COLORS.v128);
+            this.setTooltip("Grava vetor de 128 bits na memória.");
+        }
+    };
 }
+

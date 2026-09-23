@@ -9,6 +9,8 @@ export const TYPE_COLORS = {
     f32: '#10b981',
     f64: '#047857',
     bool: '#f97316',
+    v128: '#ec4899',
+    ref: '#84cc16',
     texto: '#8b5cf6',
     buffer: '#6b7280',
     funcao: '#eab308',

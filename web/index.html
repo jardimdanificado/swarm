@@ -249,6 +249,43 @@
             <block type="spp_string_concat"></block>
             <block type="spp_print"></block>
         </category>
+
+        <category name="Wasm 2.0: SIMD 128 (v128)" colour="#ec4899">
+            <block type="spp_v128_const"></block>
+            <block type="spp_v128_splat"></block>
+            <block type="spp_v128_extract_lane"></block>
+            <block type="spp_v128_replace_lane"></block>
+            <block type="spp_v128_binop"></block>
+            <block type="spp_v128_bitselect"></block>
+            <block type="spp_v128_load"></block>
+            <block type="spp_v128_store"></block>
+        </category>
+
+        <category name="Wasm 2.0: Referências & Tabelas" colour="#84cc16">
+            <block type="spp_table_declare"></block>
+            <block type="spp_ref_null"></block>
+            <block type="spp_ref_is_null"></block>
+            <block type="spp_ref_func"></block>
+            <block type="spp_table_get"></block>
+            <block type="spp_table_set"></block>
+            <block type="spp_table_size"></block>
+            <block type="spp_table_grow"></block>
+            <block type="spp_table_fill"></block>
+            <block type="spp_table_copy"></block>
+            <block type="spp_table_init"></block>
+            <block type="spp_elem_drop"></block>
+        </category>
+
+        <category name="Wasm 2.0: Bulk Memory & Extensions" colour="#059669">
+            <block type="spp_sign_extend"></block>
+            <block type="spp_trunc_sat"></block>
+            <block type="spp_mem_copy"></block>
+            <block type="spp_mem_fill"></block>
+            <block type="spp_mem_init"></block>
+            <block type="spp_data_drop"></block>
+            <block type="spp_return_call"></block>
+            <block type="spp_return_call_indirect"></block>
+        </category>
     </xml>
 
     <!-- Studio Entry Point -->

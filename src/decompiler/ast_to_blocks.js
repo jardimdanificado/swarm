@@ -45,7 +45,20 @@ export class ASTToBlocksTranspiler {
             }
         }
 
-        // 2. Render Exports (if explicitly separate)
+        // 2. Render Tables
+        if (programNode.tables) {
+            for (const t of programNode.tables) {
+                xml += `  <block type="spp_table_declare" x="${this.currentX}" y="${this.currentY}">\n`;
+                xml += `    <field name="NAME">${this.escape(t.name)}</field>\n`;
+                xml += `    <field name="TYPE">${t.type}</field>\n`;
+                xml += `    <field name="MIN">${t.minSize || 0}</field>\n`;
+                xml += `    <field name="MAX">${t.maxSize !== null && t.maxSize !== undefined ? t.maxSize : ''}</field>\n`;
+                xml += `  </block>\n`;
+                this.currentY += 100;
+            }
+        }
+
+        // 3. Render Exports (if explicitly separate)
         if (programNode.exports) {
             for (const exp of programNode.exports) {
                 xml += `  <block type="spp_export_decl" x="${this.currentX}" y="${this.currentY}">\n`;
@@ -57,7 +70,7 @@ export class ASTToBlocksTranspiler {
             }
         }
 
-        // 3. Render Globals
+        // 4. Render Globals
         if (programNode.globals) {
             for (const g of programNode.globals) {
                 xml += `  <block type="spp_global_declare" x="${this.currentX}" y="${this.currentY}">\n`;
@@ -238,6 +251,60 @@ export class ASTToBlocksTranspiler {
                 return xml;
             }
 
+            case ASTNodeType.RETURN_CALL: {
+                let xml = `${indent}<block type="spp_return_call">\n${indent}  <field name="NAME">${this.escape(node.funcName)}</field>\n`;
+                if (node.args && node.args.length > 0) {
+                    for (let i = 0; i < node.args.length; i++) {
+                        xml += `${indent}  <value name="ARG${i}">\n${this.renderExpression(node.args[i], indent + '    ')}\n${indent}  </value>\n`;
+                    }
+                }
+                xml += `${indent}</block>\n`;
+                return xml;
+            }
+
+            case ASTNodeType.RETURN_CALL_INDIRECT: {
+                let xml = `${indent}<block type="spp_return_call_indirect">\n`;
+                xml += `${indent}  <field name="TABLE_IDX">${node.tableIndex || 0}</field>\n`;
+                xml += `${indent}  <value name="FUNC_INDEX">\n${this.renderExpression(node.funcIndexExpr, indent + '    ')}\n${indent}  </value>\n`;
+                if (node.args && node.args.length > 0) {
+                    for (let i = 0; i < node.args.length; i++) {
+                        xml += `${indent}  <value name="ARG${i}">\n${this.renderExpression(node.args[i], indent + '    ')}\n${indent}  </value>\n`;
+                    }
+                }
+                xml += `${indent}</block>\n`;
+                return xml;
+            }
+
+            case ASTNodeType.MEM_COPY:
+                return `${indent}<block type="spp_mem_copy">\n${indent}  <value name="DST">\n${this.renderExpression(node.dstOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="SRC">\n${this.renderExpression(node.srcOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="LEN">\n${this.renderExpression(node.lenExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
+
+            case ASTNodeType.MEM_FILL:
+                return `${indent}<block type="spp_mem_fill">\n${indent}  <value name="DST">\n${this.renderExpression(node.dstOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="VAL">\n${this.renderExpression(node.valExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="LEN">\n${this.renderExpression(node.lenExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
+
+            case ASTNodeType.MEM_INIT:
+                return `${indent}<block type="spp_mem_init">\n${indent}  <field name="SEGMENT">${node.dataIndex}</field>\n${indent}  <value name="DST">\n${this.renderExpression(node.dstOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="SRC">\n${this.renderExpression(node.srcOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="LEN">\n${this.renderExpression(node.lenExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
+
+            case ASTNodeType.DATA_DROP:
+                return `${indent}<block type="spp_data_drop">\n${indent}  <field name="SEGMENT">${node.dataIndex}</field>\n${indent}</block>\n`;
+
+            case ASTNodeType.TABLE_SET:
+                return `${indent}<block type="spp_table_set">\n${indent}  <field name="TABLE_IDX">${node.tableIndex}</field>\n${indent}  <value name="INDEX">\n${this.renderExpression(node.offsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valueExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
+
+            case ASTNodeType.TABLE_FILL:
+                return `${indent}<block type="spp_table_fill">\n${indent}  <field name="TABLE_IDX">${node.tableIndex}</field>\n${indent}  <value name="START">\n${this.renderExpression(node.offsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valueExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="COUNT">\n${this.renderExpression(node.lenExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
+
+            case ASTNodeType.TABLE_COPY:
+                return `${indent}<block type="spp_table_copy">\n${indent}  <field name="DST_TABLE">${node.dstTableIndex}</field>\n${indent}  <field name="SRC_TABLE">${node.srcTableIndex}</field>\n${indent}  <value name="DST">\n${this.renderExpression(node.dstOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="SRC">\n${this.renderExpression(node.srcOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="COUNT">\n${this.renderExpression(node.lenExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
+
+            case ASTNodeType.TABLE_INIT:
+                return `${indent}<block type="spp_table_init">\n${indent}  <field name="TABLE_IDX">${node.tableIndex}</field>\n${indent}  <field name="ELEM_IDX">${node.elemIndex}</field>\n${indent}  <value name="DST">\n${this.renderExpression(node.dstOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="SRC">\n${this.renderExpression(node.srcOffsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="COUNT">\n${this.renderExpression(node.lenExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
+
+            case ASTNodeType.ELEM_DROP:
+                return `${indent}<block type="spp_elem_drop">\n${indent}  <field name="ELEM_IDX">${node.elemIndex}</field>\n${indent}</block>\n`;
+
+            case ASTNodeType.V128_STORE:
+                return `${indent}<block type="spp_v128_store">\n${indent}  <field name="STATIC_OFFSET">${node.staticOffset || 0}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valueExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="OFFSET">\n${this.renderExpression(node.offsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
+
             case ASTNodeType.MEM_STORE:
                 return `${indent}<block type="spp_mem_store">\n${indent}  <field name="WIDTH">${node.width === 1 ? 'u8' : (node.width === 2 ? 'u16' : (node.width === 4 ? 'u32' : 'auto'))}</field>\n${indent}  <field name="STATIC_OFFSET">${node.staticOffset || 0}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valueExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="BUFFER">\n${this.renderExpression(node.bufferExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="OFFSET">\n${this.renderExpression(node.offsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>\n`;
 
@@ -256,6 +323,8 @@ export class ASTToBlocksTranspiler {
                 if (node.type === Type.F32) return `${indent}<block type="spp_const_f32"><field name="VALUE">${node.value}</field></block>`;
                 if (node.type === Type.F64) return `${indent}<block type="spp_const_f64"><field name="VALUE">${node.value}</field></block>`;
                 if (node.type === Type.BOOL) return `${indent}<block type="spp_const_bool"><field name="VALUE">${node.value ? 'true' : 'false'}</field></block>`;
+                if (node.type === Type.V128) return `${indent}<block type="spp_v128_const"><field name="VALUE">00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</field></block>`;
+                if (node.type === Type.FUNCREF || node.type === Type.EXTERNREF) return `${indent}<block type="spp_ref_null"><field name="TYPE">${node.type}</field></block>`;
                 return `${indent}<block type="spp_const_i32"><field name="VALUE">0</field></block>`;
 
             case ASTNodeType.STRING_LITERAL:
@@ -324,6 +393,53 @@ export class ASTToBlocksTranspiler {
 
             case ASTNodeType.STRING_CONCAT:
                 return `${indent}<block type="spp_string_concat">\n${indent}  <value name="LEFT">\n${this.renderExpression(node.left, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="RIGHT">\n${this.renderExpression(node.right, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.SIGN_EXTEND:
+                return `${indent}<block type="spp_sign_extend">\n${indent}  <field name="FROM_BITS">${node.fromBits}</field>\n${indent}  <field name="TYPE">${node.type}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.TRUNC_SAT:
+                return `${indent}<block type="spp_trunc_sat">\n${indent}  <field name="FROM_TYPE">${node.fromType}</field>\n${indent}  <field name="TO_TYPE">${node.toType}</field>\n${indent}  <field name="SIGNEDNESS">${node.isSigned ? 'signed' : 'unsigned'}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.expr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.REF_NULL:
+                return `${indent}<block type="spp_ref_null"><field name="TYPE">${node.type}</field></block>`;
+
+            case ASTNodeType.REF_IS_NULL:
+                return `${indent}<block type="spp_ref_is_null">\n${indent}  <value name="REF">\n${this.renderExpression(node.refExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.REF_FUNC:
+                return `${indent}<block type="spp_ref_func"><field name="NAME">${this.escape(node.funcName)}</field></block>`;
+
+            case ASTNodeType.TABLE_GET:
+                return `${indent}<block type="spp_table_get">\n${indent}  <field name="TABLE_IDX">${node.tableIndex}</field>\n${indent}  <value name="INDEX">\n${this.renderExpression(node.offsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.TABLE_SIZE:
+                return `${indent}<block type="spp_table_size"><field name="TABLE_IDX">${node.tableIndex}</field></block>`;
+
+            case ASTNodeType.TABLE_GROW:
+                return `${indent}<block type="spp_table_grow">\n${indent}  <field name="TABLE_IDX">${node.tableIndex}</field>\n${indent}  <value name="INIT_VAL">\n${this.renderExpression(node.initExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="DELTA">\n${this.renderExpression(node.deltaExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.V128_CONST: {
+                const hex = Array.from(node.bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                return `${indent}<block type="spp_v128_const"><field name="VALUE">${hex}</field></block>`;
+            }
+
+            case ASTNodeType.V128_SPLAT:
+                return `${indent}<block type="spp_v128_splat">\n${indent}  <field name="LANE_TYPE">${node.laneType}</field>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.V128_EXTRACT_LANE:
+                return `${indent}<block type="spp_v128_extract_lane">\n${indent}  <field name="LANE_TYPE">${node.laneType}</field>\n${indent}  <field name="LANE_IDX">${node.laneIndex}</field>\n${indent}  <value name="VECTOR">\n${this.renderExpression(node.vecExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.V128_REPLACE_LANE:
+                return `${indent}<block type="spp_v128_replace_lane">\n${indent}  <field name="LANE_TYPE">${node.laneType}</field>\n${indent}  <field name="LANE_IDX">${node.laneIndex}</field>\n${indent}  <value name="VECTOR">\n${this.renderExpression(node.vecExpr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="VALUE">\n${this.renderExpression(node.valExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.V128_OP:
+                return `${indent}<block type="spp_v128_binop">\n${indent}  <field name="OP">${this.escape(node.op)}</field>\n${indent}  <value name="LEFT">\n${this.renderExpression(node.operands[0], indent + '    ')}\n${indent}  </value>\n${indent}  <value name="RIGHT">\n${this.renderExpression(node.operands[1], indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.V128_BITSELECT:
+                return `${indent}<block type="spp_v128_bitselect">\n${indent}  <value name="V1">\n${this.renderExpression(node.v1Expr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="V2">\n${this.renderExpression(node.v2Expr, indent + '    ')}\n${indent}  </value>\n${indent}  <value name="MASK">\n${this.renderExpression(node.maskExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
+
+            case ASTNodeType.V128_LOAD:
+                return `${indent}<block type="spp_v128_load">\n${indent}  <field name="STATIC_OFFSET">${node.staticOffset || 0}</field>\n${indent}  <value name="OFFSET">\n${this.renderExpression(node.offsetExpr, indent + '    ')}\n${indent}  </value>\n${indent}</block>`;
 
             default:
                 return `${indent}<block type="spp_const_i32"><field name="VALUE">0</field></block>`;

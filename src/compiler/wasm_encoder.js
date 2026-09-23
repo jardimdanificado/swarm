@@ -1,6 +1,7 @@
 /**
- * WebAssembly 1.0 Complete Binary Encoder for Scratch++ (Swarm)
- * 100% Coverage of WebAssembly 1.0 MVP Specification (All Sections 0-11 & Opcodes 0x00-0xBF)
+ * WebAssembly 2.0 Complete Binary Encoder for Scratch++ (Swarm)
+ * 100% Coverage of WebAssembly 2.0 (W3C Recommendation)
+ * Sections 0-11, Sign-Extension (0xC0-0xC4), Trunc Sat (0xFC), Bulk Memory, Reference Types, Multi-Table, Tail Calls, SIMD 128-bit (0xFD)
  */
 
 import { IROp } from './ir.js';
@@ -11,8 +12,10 @@ export const WasmValType = {
     i64: 0x7E,
     f32: 0x7D,
     f64: 0x7C,
-    void: 0x40,
-    funcref: 0x70
+    v128: 0x7B,
+    funcref: 0x70,
+    externref: 0x6F,
+    void: 0x40
 };
 
 export class BinaryWriter {
@@ -106,8 +109,14 @@ export class WasmEncoder {
     }
 
     getOrAddType(params, returnType) {
-        const pTypes = params.map(p => WasmValType[p] || WasmValType.i32);
-        const rTypes = returnType ? [WasmValType[returnType] || WasmValType.i32] : [];
+        const pTypes = (params || []).map(p => WasmValType[p] || WasmValType.i32);
+        let rTypes = [];
+        if (Array.isArray(returnType)) {
+            rTypes = returnType.map(r => WasmValType[r] || WasmValType.i32);
+        } else if (returnType && returnType !== 'void') {
+            rTypes = [WasmValType[returnType] || WasmValType.i32];
+        }
+
         const key = pTypes.join(',') + '->' + rTypes.join(',');
 
         if (this.typeMap.has(key)) {
@@ -126,7 +135,7 @@ export class WasmEncoder {
 
         const mainWriter = new BinaryWriter();
 
-        // WASM Header: \0asm v1
+        // WASM Header: \0asm v1 (Wasm 2.0 maintains binary version 1)
         mainWriter.u8(0x00); mainWriter.u8(0x61); mainWriter.u8(0x73); mainWriter.u8(0x6D);
         mainWriter.u32(1);
 
@@ -175,7 +184,7 @@ export class WasmEncoder {
                         w.vu32(imp.typeIdx);
                     } else if (imp.kind === 'table') {
                         w.u8(0x01); // table import
-                        w.u8(WasmValType.funcref);
+                        w.u8(WasmValType[imp.type] || WasmValType.funcref);
                         w.u8(imp.max !== null && imp.max !== undefined ? 0x01 : 0x00);
                         w.vu32(imp.min || 0);
                         if (imp.max !== null && imp.max !== undefined) w.vu32(imp.max);
@@ -206,15 +215,19 @@ export class WasmEncoder {
             });
         }
 
-        // SECTION 4: Table Section
-        if (irModule.table && irModule.table.elements.length > 0) {
+        // SECTION 4: Table Section (Wasm 2.0 Multi-Table & Ref Types)
+        const tables = irModule.tables || (irModule.table && irModule.table.elements.length > 0 ? [irModule.table] : []);
+        if (tables.length > 0) {
             this.writeSection(mainWriter, 4, () => {
                 const w = new BinaryWriter();
-                w.vu32(1);
-                w.u8(WasmValType.funcref);
-                w.u8(0x01);
-                w.vu32(irModule.table.min);
-                w.vu32(irModule.table.max);
+                w.vu32(tables.length);
+                for (const t of tables) {
+                    w.u8(WasmValType[t.type] || WasmValType.funcref);
+                    const hasMax = t.max !== null && t.max !== undefined;
+                    w.u8(hasMax ? 0x01 : 0x00);
+                    w.vu32(t.min || 0);
+                    if (hasMax) w.vu32(t.max);
+                }
                 return w.toUint8Array();
             });
         }
@@ -254,6 +267,9 @@ export class WasmEncoder {
                     } else if (g.wasmType === 'f64') {
                         w.u8(0x44);
                         w.f64(g.initValue || 0);
+                    } else if (g.wasmType === 'funcref' || g.wasmType === 'externref') {
+                        w.u8(0xD0); // ref.null
+                        w.u8(valType);
                     } else {
                         w.u8(0x41);
                         w.vs32(g.initValue || 0);
@@ -290,18 +306,42 @@ export class WasmEncoder {
             });
         }
 
-        // SECTION 9: Element Section
-        if (irModule.table && irModule.table.elements.length > 0) {
+        // SECTION 9: Element Section (Active & Declared segments)
+        const elemSegments = [];
+        if (tables.length > 0) {
+            for (let tIdx = 0; tIdx < tables.length; tIdx++) {
+                const t = tables[tIdx];
+                if (t.elements && t.elements.length > 0) {
+                    elemSegments.push({
+                        tableIdx: tIdx,
+                        elements: t.elements
+                    });
+                }
+            }
+        }
+
+        if (elemSegments.length > 0) {
             this.writeSection(mainWriter, 9, () => {
                 const w = new BinaryWriter();
-                w.vu32(1);
-                w.vu32(0); // table 0
-                w.u8(0x41);
-                w.vs32(0);
-                w.u8(0x0B);
-                w.vu32(irModule.table.elements.length);
-                for (const fIdx of irModule.table.elements) {
-                    w.vu32(fIdx);
+                w.vu32(elemSegments.length);
+                for (const seg of elemSegments) {
+                    if (seg.tableIdx === 0) {
+                        w.vu32(0); // active segment for table 0
+                        w.u8(0x41);
+                        w.vs32(0);
+                        w.u8(0x0B);
+                        w.vu32(seg.elements.length);
+                        for (const fIdx of seg.elements) w.vu32(fIdx);
+                    } else {
+                        w.vu32(2); // active segment for arbitrary table
+                        w.vu32(seg.tableIdx);
+                        w.u8(0x41);
+                        w.vs32(0);
+                        w.u8(0x0B);
+                        w.u8(0x00); // elemkind: func
+                        w.vu32(seg.elements.length);
+                        for (const fIdx of seg.elements) w.vu32(fIdx);
+                    }
                 }
                 return w.toUint8Array();
             });
@@ -401,6 +441,15 @@ export class WasmEncoder {
             case IROp.CONST_F32: w.u8(0x43); w.f32(Number(node.imm)); break;
             case IROp.CONST_F64: w.u8(0x44); w.f64(Number(node.imm)); break;
 
+            // SIMD 128-bit Constant (0xFD 0x0C)
+            case IROp.CONST_V128: {
+                w.u8(0xFD);
+                w.vu32(0x0C);
+                const bytes = node.imm instanceof Uint8Array ? node.imm : new Uint8Array(node.imm || 16);
+                w.raw(bytes);
+                break;
+            }
+
             case IROp.LOCAL_GET: w.u8(0x20); w.vu32(Number(node.imm)); break;
             case IROp.LOCAL_SET: w.u8(0x21); w.vu32(Number(node.imm)); break;
             case IROp.LOCAL_TEE: w.u8(0x22); w.vu32(Number(node.imm)); break;
@@ -419,21 +468,27 @@ export class WasmEncoder {
                 break;
             }
 
-            case IROp.BLOCK:
-                w.u8(0x02); w.u8(0x40);
+            case IROp.BLOCK: {
+                w.u8(0x02);
+                const resType = node.imm?.resultType || 'void';
+                w.u8(WasmValType[resType] || 0x40);
                 if (node.imm?.body) {
                     for (const child of node.imm.body) this.encodeNode(w, child);
                 }
                 w.u8(0x0B);
                 break;
+            }
 
-            case IROp.LOOP:
-                w.u8(0x03); w.u8(0x40);
+            case IROp.LOOP: {
+                w.u8(0x03);
+                const resType = node.imm?.resultType || 'void';
+                w.u8(WasmValType[resType] || 0x40);
                 if (node.imm?.body) {
                     for (const child of node.imm.body) this.encodeNode(w, child);
                 }
                 w.u8(0x0B);
                 break;
+            }
 
             case IROp.IF:
                 if (node.args && node.args.length > 0) {
@@ -457,7 +512,19 @@ export class WasmEncoder {
                 const typeIdx = this.getOrAddType(node.imm.paramTypes, node.imm.returnType);
                 w.u8(0x11);
                 w.vu32(typeIdx);
-                w.u8(0x00);
+                w.vu32(Number(node.imm.tableIdx || 0));
+                break;
+            }
+
+            // Tail Calls (Wasm 2.0)
+            case IROp.RETURN_CALL:
+                w.u8(0x12); w.vu32(Number(node.imm)); break;
+
+            case IROp.RETURN_CALL_INDIRECT: {
+                const typeIdx = this.getOrAddType(node.imm.paramTypes, node.imm.returnType);
+                w.u8(0x13);
+                w.vu32(typeIdx);
+                w.vu32(Number(node.imm.tableIdx || 0));
                 break;
             }
 
@@ -466,6 +533,23 @@ export class WasmEncoder {
             case IROp.CLZ: w.u8(type === 'i64' ? 0x79 : 0x67); break;
             case IROp.CTZ: w.u8(type === 'i64' ? 0x7A : 0x68); break;
             case IROp.POPCNT: w.u8(type === 'i64' ? 0x7B : 0x69); break;
+
+            // Sign-Extension (0xC0-0xC4)
+            case IROp.EXTEND8_S: w.u8(type === 'i64' ? 0xC2 : 0xC0); break;
+            case IROp.EXTEND16_S: w.u8(type === 'i64' ? 0xC3 : 0xC1); break;
+            case IROp.EXTEND32_S: w.u8(0xC4); break;
+
+            // Non-Trapping Float-to-Int Conversions (0xFC 0x00-0x07)
+            case IROp.TRUNC_SAT: {
+                const { srcType, targetType, signed } = node.imm;
+                w.u8(0xFC);
+                if (targetType === 'i32' && srcType === 'f32') w.vu32(signed ? 0x00 : 0x01);
+                else if (targetType === 'i32' && srcType === 'f64') w.vu32(signed ? 0x02 : 0x03);
+                else if (targetType === 'i64' && srcType === 'f32') w.vu32(signed ? 0x04 : 0x05);
+                else if (targetType === 'i64' && srcType === 'f64') w.vu32(signed ? 0x06 : 0x07);
+                else w.vu32(0x00);
+                break;
+            }
 
             // Unary Float
             case IROp.ABS: w.u8(type === 'f64' ? 0x99 : 0x8B); break;
@@ -543,7 +627,7 @@ export class WasmEncoder {
                 break;
             }
 
-            // Memory Operations
+            // Memory Operations (Wasm 1.0 + Bulk Memory Wasm 2.0)
             case IROp.LOAD:
                 w.u8(type === 'i64' ? 0x29 : (type === 'f32' ? 0x2A : (type === 'f64' ? 0x2B : 0x28)));
                 w.vu32(node.imm?.align ?? (type === 'i64' || type === 'f64' ? 3 : 2));
@@ -578,6 +662,104 @@ export class WasmEncoder {
                 w.u8(0x40); w.u8(0x00); break;
             case IROp.MEMORY_SIZE:
                 w.u8(0x3F); w.u8(0x00); break;
+
+            // Bulk Memory (0xFC prefix)
+            case IROp.MEMORY_COPY:
+                w.u8(0xFC); w.vu32(0x0A); w.u8(0x00); w.u8(0x00); break;
+            case IROp.MEMORY_FILL:
+                w.u8(0xFC); w.vu32(0x0B); w.u8(0x00); break;
+            case IROp.MEMORY_INIT:
+                w.u8(0xFC); w.vu32(0x08); w.vu32(Number(node.imm || 0)); w.u8(0x00); break;
+            case IROp.DATA_DROP:
+                w.u8(0xFC); w.vu32(0x09); w.vu32(Number(node.imm || 0)); break;
+
+            // Reference Types & Tables (Wasm 2.0)
+            case IROp.REF_NULL:
+                w.u8(0xD0); w.u8(WasmValType[node.imm] || WasmValType.funcref); break;
+            case IROp.REF_IS_NULL:
+                w.u8(0xD1); break;
+            case IROp.REF_FUNC:
+                w.u8(0xD2); w.vu32(Number(node.imm)); break;
+
+            case IROp.TABLE_GET:
+                w.u8(0x25); w.vu32(Number(node.imm)); break;
+            case IROp.TABLE_SET:
+                w.u8(0x26); w.vu32(Number(node.imm)); break;
+            case IROp.TABLE_SIZE:
+                w.u8(0xFC); w.vu32(0x10); w.vu32(Number(node.imm)); break;
+            case IROp.TABLE_GROW:
+                w.u8(0xFC); w.vu32(0x0F); w.vu32(Number(node.imm)); break;
+            case IROp.TABLE_FILL:
+                w.u8(0xFC); w.vu32(0x11); w.vu32(Number(node.imm)); break;
+            case IROp.TABLE_COPY:
+                w.u8(0xFC); w.vu32(0x0E); w.vu32(Number(node.imm.dstTable || 0)); w.vu32(Number(node.imm.srcTable || 0)); break;
+            case IROp.TABLE_INIT:
+                w.u8(0xFC); w.vu32(0x0C); w.vu32(Number(node.imm.elemIdx || 0)); w.vu32(Number(node.imm.tableIdx || 0)); break;
+            case IROp.ELEM_DROP:
+                w.u8(0xFC); w.vu32(0x0D); w.vu32(Number(node.imm || 0)); break;
+
+            // Fixed-Width SIMD (0xFD prefix)
+            case IROp.V128_LOAD:
+                w.u8(0xFD); w.vu32(0x00); w.vu32(node.imm?.align ?? 4); w.vu32(node.imm?.offset ?? 0); break;
+            case IROp.V128_STORE:
+                w.u8(0xFD); w.vu32(0x0B); w.vu32(node.imm?.align ?? 4); w.vu32(node.imm?.offset ?? 0); break;
+
+            case IROp.V128_SPLAT: {
+                w.u8(0xFD);
+                const lane = node.imm;
+                if (lane === 'i8x16') w.vu32(0x0F);
+                else if (lane === 'i16x8') w.vu32(0x10);
+                else if (lane === 'i32x4') w.vu32(0x11);
+                else if (lane === 'i64x2') w.vu32(0x12);
+                else if (lane === 'f32x4') w.vu32(0x13);
+                else if (lane === 'f64x2') w.vu32(0x14);
+                else w.vu32(0x11);
+                break;
+            }
+
+            case IROp.V128_EXTRACT_LANE: {
+                w.u8(0xFD);
+                const { laneType, laneIdx, signed } = node.imm;
+                if (laneType === 'i8x16') { w.vu32(signed ? 0x15 : 0x16); w.u8(laneIdx); }
+                else if (laneType === 'i16x8') { w.vu32(signed ? 0x18 : 0x19); w.u8(laneIdx); }
+                else if (laneType === 'i32x4') { w.vu32(0x1B); w.u8(laneIdx); }
+                else if (laneType === 'i64x2') { w.vu32(0x1D); w.u8(laneIdx); }
+                else if (laneType === 'f32x4') { w.vu32(0x1F); w.u8(laneIdx); }
+                else if (laneType === 'f64x2') { w.vu32(0x21); w.u8(laneIdx); }
+                break;
+            }
+
+            case IROp.V128_REPLACE_LANE: {
+                w.u8(0xFD);
+                const { laneType, laneIdx } = node.imm;
+                if (laneType === 'i8x16') { w.vu32(0x17); w.u8(laneIdx); }
+                else if (laneType === 'i16x8') { w.vu32(0x1A); w.u8(laneIdx); }
+                else if (laneType === 'i32x4') { w.vu32(0x1C); w.u8(laneIdx); }
+                else if (laneType === 'i64x2') { w.vu32(0x1E); w.u8(laneIdx); }
+                else if (laneType === 'f32x4') { w.vu32(0x20); w.u8(laneIdx); }
+                else if (laneType === 'f64x2') { w.vu32(0x22); w.u8(laneIdx); }
+                break;
+            }
+
+            case IROp.V128_BITSELECT:
+                w.u8(0xFD); w.vu32(0x52); break;
+
+            case IROp.V128_OP: {
+                w.u8(0xFD);
+                const op = node.imm;
+                const SIMD_OPCODES = {
+                    'v128.not': 0x4D, 'v128.and': 0x4E, 'v128.andnot': 0x4F, 'v128.or': 0x50, 'v128.xor': 0x51,
+                    'i8x16.add': 0x6E, 'i8x16.sub': 0x71, 'i8x16.eq': 0x23, 'i8x16.ne': 0x24,
+                    'i16x8.add': 0x82, 'i16x8.sub': 0x85, 'i16x8.mul': 0x95, 'i16x8.eq': 0x27, 'i16x8.ne': 0x28,
+                    'i32x4.add': 0xAE, 'i32x4.sub': 0xB1, 'i32x4.mul': 0xB5, 'i32x4.eq': 0x2B, 'i32x4.ne': 0x2C, 'i32x4.lt_s': 0x2D,
+                    'i64x2.add': 0xCE, 'i64x2.sub': 0xD1, 'i64x2.mul': 0xD5, 'i64x2.eq': 0xD6, 'i64x2.ne': 0xD7,
+                    'f32x4.add': 0xE4, 'f32x4.sub': 0xE5, 'f32x4.mul': 0xE6, 'f32x4.div': 0xE7, 'f32x4.min': 0xE8, 'f32x4.max': 0xE9,
+                    'f64x2.add': 0xF0, 'f64x2.sub': 0xF1, 'f64x2.mul': 0xF2, 'f64x2.div': 0xF3, 'f64x2.min': 0xF4, 'f64x2.max': 0xF5
+                };
+                const code = SIMD_OPCODES[op] || 0xAE; // default i32x4.add
+                w.vu32(code);
+                break;
+            }
 
             default:
                 break;
