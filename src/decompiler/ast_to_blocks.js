@@ -13,7 +13,17 @@ export class ASTToBlocksTranspiler {
         this.currentY = 40;
     }
 
+    advanceLayout(height = 120) {
+        this.currentY += height;
+        if (this.currentY > 1100) {
+            this.currentY = 40;
+            this.currentX += 460;
+        }
+    }
+
     transpile(programNode) {
+        this.currentX = 40;
+        this.currentY = 40;
         let xml = '<xml xmlns="https://developers.google.com/blockly/xml">\n';
 
         // 1. Render Imports
@@ -31,7 +41,7 @@ export class ASTToBlocksTranspiler {
                         xml += `    </statement>\n`;
                     }
                     xml += `  </block>\n`;
-                    this.currentY += 140;
+                    this.advanceLayout(140);
                 } else if (imp.nodeType === ASTNodeType.IMPORT_GLOBAL) {
                     xml += `  <block type="spp_import_global" x="${this.currentX}" y="${this.currentY}">\n`;
                     xml += `    <field name="NAME">${this.escape(imp.name)}</field>\n`;
@@ -40,7 +50,7 @@ export class ASTToBlocksTranspiler {
                     xml += `    <field name="TYPE">${imp.type}</field>\n`;
                     xml += `    <field name="MUTABLE">${imp.mutable ? 'mut' : 'const'}</field>\n`;
                     xml += `  </block>\n`;
-                    this.currentY += 100;
+                    this.advanceLayout(100);
                 }
             }
         }
@@ -54,7 +64,7 @@ export class ASTToBlocksTranspiler {
                 xml += `    <field name="MIN">${t.minSize || 0}</field>\n`;
                 xml += `    <field name="MAX">${t.maxSize !== null && t.maxSize !== undefined ? t.maxSize : ''}</field>\n`;
                 xml += `  </block>\n`;
-                this.currentY += 100;
+                this.advanceLayout(100);
             }
         }
 
@@ -66,7 +76,7 @@ export class ASTToBlocksTranspiler {
                 xml += `    <field name="INTERNAL_NAME">${this.escape(exp.internalName)}</field>\n`;
                 xml += `    <field name="EXPORT_NAME">${this.escape(exp.exportName)}</field>\n`;
                 xml += `  </block>\n`;
-                this.currentY += 90;
+                this.advanceLayout(90);
             }
         }
 
@@ -81,7 +91,7 @@ export class ASTToBlocksTranspiler {
                     xml += `    <value name="INIT">\n${this.renderExpression(g.initExpr, '      ')}\n    </value>\n`;
                 }
                 xml += `  </block>\n`;
-                this.currentY += 100;
+                this.advanceLayout(100);
             }
         }
 
@@ -102,7 +112,8 @@ export class ASTToBlocksTranspiler {
                     xml += `    </statement>\n`;
                 }
                 xml += `  </block>\n`;
-                this.currentY += 280;
+                const approxHeight = Math.max(160, 60 + ((func.body ? func.body.length : 0) * 35));
+                this.advanceLayout(approxHeight);
             }
         }
 
@@ -113,6 +124,7 @@ export class ASTToBlocksTranspiler {
             xml += this.renderStatementChain(programNode.mainBody, '      ');
             xml += `    </next>\n`;
             xml += `  </block>\n`;
+            this.advanceLayout(200);
         }
 
         xml += '</xml>';

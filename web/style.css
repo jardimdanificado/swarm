@@ -190,6 +190,7 @@ button.btn-accent:hover {
     flex: 1;
     height: 100%;
     position: relative;
+    contain: strict;
 }
 
 #blockly-div {
@@ -198,6 +199,16 @@ button.btn-accent:hover {
     position: absolute;
     top: 0;
     left: 0;
+    contain: strict;
+}
+
+.blocklySvg {
+    will-change: transform;
+    shape-rendering: geometricPrecision;
+}
+
+.blocklyBlockCanvas, .blocklyBubbleCanvas {
+    will-change: transform;
 }
 
 /* Side Inspector & Output Panel */
@@ -305,6 +316,8 @@ button.btn-accent:hover {
     font-size: 11px;
     line-height: 1.4;
     flex: 1;
+    contain: content;
+    content-visibility: auto;
 }
 
 /* Footer Status Bar */

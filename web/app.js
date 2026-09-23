@@ -84,6 +84,50 @@ function formatHexDump(uint8Array) {
     return result;
 }
 
+let activeTab = 'tab-console';
+let cachedAst = null;
+let cachedCompileResult = null;
+
+function updateTabUI(tabId) {
+    if (tabId === 'tab-wasm') {
+        const wasmSummary = document.getElementById('wasm-summary');
+        const wasmHex = document.getElementById('wasm-hex');
+        if (wasmSummary && wasmHex) {
+            if (lastCompiledWasm) {
+                wasmSummary.textContent = `Tamanho: ${lastCompiledWasm.length} bytes • Seções Wasm geradas com sucesso.`;
+                if (lastCompiledWasm.length > 65536) {
+                    const slice = lastCompiledWasm.subarray(0, 65536);
+                    wasmHex.textContent = formatHexDump(slice) + `\n... [Visualização truncada em 64KB (${lastCompiledWasm.length} bytes totais). Exporte o .wasm para ver o arquivo completo]`;
+                } else {
+                    wasmHex.textContent = formatHexDump(lastCompiledWasm);
+                }
+            } else {
+                wasmSummary.textContent = '';
+                wasmHex.textContent = 'Nenhum módulo compilado ainda. Clique em "Compilar".';
+            }
+        }
+    } else if (tabId === 'tab-ir') {
+        const irViewer = document.getElementById('ir-viewer');
+        if (irViewer) {
+            if (cachedAst && cachedCompileResult) {
+                const irData = {
+                    ast: cachedAst,
+                    coercions: cachedCompileResult.typeCheckResult?.coercions,
+                    functions: Array.from(cachedCompileResult.typeCheckResult?.functions?.keys() || [])
+                };
+                const jsonStr = JSON.stringify(irData, (key, val) => typeof val === 'bigint' ? val.toString() + 'n' : val, 2);
+                if (jsonStr.length > 100000) {
+                    irViewer.textContent = jsonStr.slice(0, 100000) + '\n\n... [Visualização truncada para otimização de renderização]';
+                } else {
+                    irViewer.textContent = jsonStr;
+                }
+            } else {
+                irViewer.textContent = 'Nenhuma IR gerada.';
+            }
+        }
+    }
+}
+
 /* =========================================================================
  * Compilation Pipeline
  * ========================================================================= */
@@ -94,24 +138,11 @@ function compileWorkspace(silent = false) {
 
         const compileResult = compiler.compile(programAst);
         lastCompiledWasm = compileResult.wasmBytes;
+        cachedAst = programAst;
+        cachedCompileResult = compileResult;
 
-        // Update Wasm Hex tab
-        const wasmSummary = document.getElementById('wasm-summary');
-        const wasmHex = document.getElementById('wasm-hex');
-        if (wasmSummary && wasmHex) {
-            wasmSummary.textContent = `Tamanho: ${lastCompiledWasm.length} bytes • Seções Wasm 1.0 geradas com sucesso.`;
-            wasmHex.textContent = formatHexDump(lastCompiledWasm);
-        }
-
-        // Update AST/IR tab
-        const irViewer = document.getElementById('ir-viewer');
-        if (irViewer) {
-            irViewer.textContent = JSON.stringify({
-                ast: programAst,
-                coercions: compileResult.typeCheckResult.coercions,
-                functions: Array.from(compileResult.typeCheckResult.functions.keys())
-            }, (key, val) => typeof val === 'bigint' ? val.toString() + 'n' : val, 2);
-        }
+        // Lazy-render active tab only
+        updateTabUI(activeTab);
 
         const statusLeft = document.getElementById('status-left');
         if (statusLeft) {
@@ -189,13 +220,24 @@ function serializeXmlDom(xmlDom) {
 /* =========================================================================
  * Project / Example Management
  * ========================================================================= */
+function loadXmlToWorkspace(xmlText) {
+    if (!workspace) return;
+    const disableEvents = Blockly.Events && typeof Blockly.Events.disable === 'function';
+    if (disableEvents) Blockly.Events.disable();
+    try {
+        workspace.clear();
+        const dom = parseXmlText(xmlText);
+        Blockly.Xml.domToWorkspace(dom, workspace);
+    } finally {
+        if (disableEvents) Blockly.Events.enable();
+    }
+}
+
 function loadExample(exampleId) {
     const example = EXAMPLES.find(e => e.id === exampleId);
     if (!example || !workspace) return;
 
-    workspace.clear();
-    const dom = parseXmlText(example.xml);
-    Blockly.Xml.domToWorkspace(dom, workspace);
+    loadXmlToWorkspace(example.xml);
     showToast(`Exemplo "${example.name}" carregado.`, 'success');
     compileWorkspace();
 }
@@ -305,9 +347,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 try {
                     const data = JSON.parse(evt.target.result);
                     if (data.xml) {
-                        workspace.clear();
-                        const dom = parseXmlText(data.xml);
-                        Blockly.Xml.domToWorkspace(dom, workspace);
+                        loadXmlToWorkspace(data.xml);
                         showToast(`Projeto "${data.name || file.name}" carregado.`, 'success');
                         compileWorkspace();
                     }
@@ -340,9 +380,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         const watText = evt.target.result;
                         const ast = watParser.parse(watText);
                         const xmlText = astToBlocks.transpile(ast);
-                        workspace.clear();
-                        const dom = parseXmlText(xmlText);
-                        Blockly.Xml.domToWorkspace(dom, workspace);
+                        loadXmlToWorkspace(xmlText);
                         showToast(`WAT "${file.name}" descompilado com sucesso!`, 'success');
                         compileWorkspace();
                     } catch (err) {
@@ -357,9 +395,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         const buffer = new Uint8Array(evt.target.result);
                         const ast = wasmDecoder.decode(buffer);
                         const xmlText = astToBlocks.transpile(ast);
-                        workspace.clear();
-                        const dom = parseXmlText(xmlText);
-                        Blockly.Xml.domToWorkspace(dom, workspace);
+                        loadXmlToWorkspace(xmlText);
                         showToast(`Binário .wasm "${file.name}" descompilado com sucesso!`, 'success');
                         compileWorkspace();
                     } catch (err) {
@@ -391,8 +427,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
             btn.classList.add('active');
             const targetId = btn.getAttribute('data-tab');
+            activeTab = targetId;
             const targetContent = document.getElementById(targetId);
             if (targetContent) targetContent.classList.add('active');
+            updateTabUI(targetId);
         });
     });
 
@@ -408,9 +446,15 @@ window.addEventListener('DOMContentLoaded', () => {
     let autoCompileTimer = null;
     workspace.addChangeListener((e) => {
         if (e.isUiEvent || (workspace.isDragging && workspace.isDragging())) return;
+        if (e.type !== Blockly.Events.BLOCK_CREATE &&
+            e.type !== Blockly.Events.BLOCK_DELETE &&
+            e.type !== Blockly.Events.BLOCK_CHANGE &&
+            e.type !== Blockly.Events.BLOCK_MOVE) {
+            return;
+        }
         if (autoCompileTimer) clearTimeout(autoCompileTimer);
         autoCompileTimer = setTimeout(() => {
             compileWorkspace(true);
-        }, 250);
+        }, 350);
     });
 });
